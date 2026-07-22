@@ -188,7 +188,7 @@ button:disabled {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr 1fr;
+  grid-template-columns: 1.25fr repeat(3, 1fr);
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -208,6 +208,15 @@ button:disabled {
   background: var(--forest);
   color: white;
   border-color: var(--forest);
+}
+
+.metric-evasion {
+  border-color: rgba(157, 46, 28, 0.3);
+  background: rgba(157, 46, 28, 0.06);
+}
+
+.metric-evasion strong {
+  color: var(--danger);
 }
 
 .metric > span {
@@ -394,7 +403,7 @@ button:disabled {
 
 .vehicle-row {
   display: grid;
-  grid-template-columns: 130px minmax(110px, 1fr) minmax(100px, 0.75fr) auto;
+  grid-template-columns: 130px minmax(110px, 1fr) minmax(100px, 0.75fr) 155px;
   align-items: center;
   gap: 18px;
   padding: 16px 3px;
@@ -450,6 +459,26 @@ button:disabled {
 
 .charge-button:hover {
   background: var(--acid);
+}
+
+.vehicle-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.evasion-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(157, 46, 28, 0.45);
+  border-radius: 10px;
+  background: rgba(157, 46, 28, 0.04);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.evasion-button:hover {
+  background: rgba(157, 46, 28, 0.11);
 }
 
 .empty-state {
@@ -532,6 +561,23 @@ th {
   height: 110px;
   color: var(--ink-soft);
   text-align: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.status-evaded {
+  background: rgba(157, 46, 28, 0.1);
+  color: var(--danger);
+}
+
+.table-debt {
+  color: var(--danger);
 }
 
 .dialog-backdrop {
@@ -617,6 +663,11 @@ th {
   color: white;
 }
 
+.charge-total.is-evasion,
+.receipt-total.is-evasion {
+  background: #692417;
+}
+
 .charge-total span,
 .receipt-total span,
 .receipt-total small {
@@ -665,6 +716,80 @@ th {
   accent-color: var(--forest);
 }
 
+.evasion-warning {
+  margin: 0 0 20px;
+  padding: 13px 14px;
+  border: 1px solid rgba(157, 46, 28, 0.25);
+  border-radius: 12px;
+  background: rgba(157, 46, 28, 0.07);
+  color: #6f281c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.form-field label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.form-field label span,
+.form-field small {
+  color: var(--ink-soft);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #faf9f4;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+
+.form-field select {
+  height: 46px;
+  padding: 0 12px;
+}
+
+.form-field textarea {
+  min-height: 88px;
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(157, 46, 28, 0.1);
+}
+
+.form-field small {
+  justify-self: end;
+  font-size: 11px;
+}
+
+.danger-button {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #782316;
+}
+
 .dialog-note {
   margin: 12px 0 0;
   color: var(--ink-soft);
@@ -682,6 +807,11 @@ th {
   background: var(--acid);
   font-size: 31px;
   font-weight: 900;
+}
+
+.receipt-check.is-evasion {
+  background: rgba(157, 46, 28, 0.12);
+  color: var(--danger);
 }
 
 .receipt-plate {
@@ -762,8 +892,9 @@ th {
     grid-template-columns: 1fr 1fr;
   }
 
-  .charge-button {
+  .vehicle-actions {
     grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
   }
 
   .vehicle-estimate {
