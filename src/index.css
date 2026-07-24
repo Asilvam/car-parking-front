@@ -845,7 +845,25 @@ th {
 
 @media (max-width: 680px) {
   .app-shell {
+    display: flex;
+    flex-direction: column;
     padding: 0 15px 40px;
+  }
+
+  .dashboard-heading {
+    order: 1;
+  }
+
+  .workspace-grid {
+    order: 2;
+  }
+
+  .summary-grid {
+    order: 3;
+  }
+
+  .history-panel {
+    order: 4;
   }
 
   .workspace-grid {

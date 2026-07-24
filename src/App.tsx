@@ -109,13 +109,16 @@ const shortDate = new Intl.DateTimeFormat("es-CL", {
   timeZone: "America/Santiago",
 });
 
-const longDate = new Intl.DateTimeFormat("es-CL", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  timeZone: "America/Santiago",
-});
+function chileDayMonth(dateValue: number): string {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Santiago",
+  });
+  const parts = formatter.formatToParts(new Date(dateValue));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.day}-${map.month}`;
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -402,12 +405,11 @@ export function OperatorApp() {
       <section className="dashboard-heading">
         <div>
           <p className="eyebrow">Caja de hoy</p>
-          <h2>{longDate.format(new Date(now))}</h2>
+          <h2>{chileDayMonth(now)}</h2>
           <p>
-            Hora actual {clock.format(new Date(now))}
             {location
-              ? ` · ${location.name}${location.address ? ` · ${location.address}` : ""}`
-              : ""}
+              ? `${location.name}${location.address ? ` · ${location.address}` : ""}`
+              : "Control de estacionamiento"}
           </p>
         </div>
         <div className="rate-chip">
