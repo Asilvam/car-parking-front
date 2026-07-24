@@ -138,37 +138,23 @@ button:disabled {
 }
 
 .dashboard-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 32px;
-  padding: 55px 0 32px;
-}
-
-.dashboard-heading h2 {
-  font-size: clamp(32px, 4vw, 58px);
-  line-height: 1;
-}
-
-.dashboard-heading > div > p:last-child {
-  margin: 14px 0 0;
-  color: var(--ink-soft);
-  font-size: 16px;
-}
-
-.rate-chip {
   display: grid;
-  grid-template-columns: auto auto;
-  gap: 1px 10px;
-  min-width: 210px;
-  padding: 14px 18px;
-  border: 1px solid rgba(23, 60, 45, 0.16);
-  border-radius: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 28px 0 18px;
+}
+
+.dash-chip {
+  display: grid;
+  gap: 4px;
+  min-height: 94px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   background: rgba(255, 253, 247, 0.76);
 }
 
-.rate-chip span {
-  grid-column: 1 / -1;
+.dash-chip span {
   color: var(--ink-soft);
   font-size: 11px;
   font-weight: 800;
@@ -176,14 +162,42 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.dash-chip strong {
+  font-size: clamp(21px, 2.6vw, 30px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.dash-chip small {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.chip-location {
+  font-size: clamp(17px, 2.1vw, 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rate-chip {
+  min-width: 0;
+  border: 1px solid rgba(23, 60, 45, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 253, 247, 0.76);
+}
+
+.rate-chip span {
+  grid-column: auto;
+}
+
 .rate-chip strong {
-  font-size: 23px;
+  font-size: clamp(20px, 2.4vw, 28px);
 }
 
 .rate-chip small {
-  align-self: end;
-  padding-bottom: 3px;
-  color: var(--ink-soft);
+  align-self: auto;
+  padding-bottom: 0;
 }
 
 .summary-grid {
@@ -830,6 +844,11 @@ th {
 }
 
 @media (max-width: 980px) {
+  .dashboard-heading {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
   .workspace-grid {
     grid-template-columns: 1fr;
   }
@@ -847,7 +866,7 @@ th {
   .app-shell {
     display: flex;
     flex-direction: column;
-    padding: 0 15px 40px;
+    padding: 0 14px 30px;
   }
 
   .dashboard-heading {
@@ -886,20 +905,37 @@ th {
   .dashboard-heading {
     align-items: stretch;
     flex-direction: column;
-    padding: 38px 0 24px;
+    gap: 8px;
+    padding: 22px 0 12px;
   }
 
-  .rate-chip {
-    min-width: 0;
+  .dash-chip {
+    min-height: 0;
+    padding: 11px 12px;
+    gap: 2px;
+  }
+
+  .dash-chip span {
+    font-size: 10px;
+  }
+
+  .dash-chip strong {
+    font-size: 20px;
+  }
+
+  .dash-chip small {
+    font-size: 11px;
   }
 
   .summary-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
   .metric {
-    min-height: 125px;
-    padding: 18px;
+    min-height: 112px;
+    padding: 14px;
   }
 
   .metric-highlight {
@@ -909,7 +945,11 @@ th {
   .entry-panel,
   .active-panel,
   .history-panel {
-    padding: 19px;
+    padding: 15px;
+  }
+
+  .history-panel {
+    margin-top: 12px;
   }
 
   .active-heading {

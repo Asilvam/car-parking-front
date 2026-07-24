@@ -403,20 +403,23 @@ export function OperatorApp() {
       </header>
 
       <section className="dashboard-heading">
-        <div>
-          <p className="eyebrow">Caja de hoy</p>
-          <h2>{chileDayMonth(now)}</h2>
-          <p>
-            {location
-              ? `${location.name}${location.address ? ` · ${location.address}` : ""}`
-              : "Control de estacionamiento"}
-          </p>
-        </div>
-        <div className="rate-chip">
+        <article className="dash-chip">
+          <span>Fecha</span>
+          <strong>{chileDayMonth(now)}</strong>
+          <small>America/Santiago</small>
+        </article>
+        <article className="dash-chip">
+          <span>Locación</span>
+          <strong className="chip-location">
+            {location?.name ?? "Control de estacionamiento"}
+          </strong>
+          <small>{location?.address ?? "Ubicación principal"}</small>
+        </article>
+        <article className="dash-chip rate-chip">
           <span>Tarifa vigente</span>
           <strong>{money.format(summary.ratePerMinute)}</strong>
           <small>por minuto</small>
-        </div>
+        </article>
       </section>
 
       <section className="summary-grid" aria-label="Resumen del día">
