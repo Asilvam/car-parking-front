@@ -323,7 +323,12 @@ export function OperatorApp() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-lockup">
+        <a
+          className="brand-lockup brand-admin-link"
+          href="/admin"
+          aria-label="Abrir modo administrador"
+          title="Modo administrador"
+        >
           <span className="brand-mark" aria-hidden="true">
             M
           </span>
@@ -333,7 +338,7 @@ export function OperatorApp() {
             </p>
             <h1>Minuto</h1>
           </div>
-        </div>
+        </a>
         <div className="topbar-status">
           <span className={`status-dot ${connected ? "is-online" : ""}`} />
           {connected ? "Sistema conectado" : "Backend sin conexión"}

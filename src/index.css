@@ -82,6 +82,22 @@ button:disabled {
   gap: 13px;
 }
 
+.brand-admin-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 14px;
+  transition: background 140ms ease;
+}
+
+.brand-admin-link:hover {
+  background: rgba(17, 24, 19, 0.04);
+}
+
+.brand-admin-link:focus-visible {
+  outline: 2px solid rgba(23, 60, 45, 0.35);
+  outline-offset: 2px;
+}
+
 .brand-mark {
   display: grid;
   place-items: center;
