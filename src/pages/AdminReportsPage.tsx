@@ -1,170 +1,23 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import PresetFields from "../components/admin/PresetFields";
+import {
+  adminApi,
+  buildQuery,
+  clearAdminToken,
+  getAdminToken,
+  saveAdminToken,
+} from "../lib/api";
+import { API_URL } from "../lib/constants";
+import { dateTime, money, todayIso } from "../lib/format";
+import {
+  PaymentFilter,
+  Preset,
+  StatusFilter,
+  SummaryResponse,
+} from "../lib/types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3500";
-const ADMIN_TOKEN_KEY = "parking_admin_session";
-
-type Preset = "day" | "week" | "month" | "range";
-type StatusFilter = "all" | "active" | "completed" | "evaded";
-type PaymentFilter = "all" | "cash" | "debit" | "credit" | "transfer";
-
-type SummaryResponse = {
-  range: string;
-  filters: {
-    preset: Preset;
-    date: string;
-    from: string;
-    to: string;
-    status: StatusFilter;
-    paymentMethod: PaymentFilter;
-    vehicleNumber: string;
-  };
-  totals: {
-    movements: number;
-    active: number;
-    completed: number;
-    evaded: number;
-    revenue: number;
-    debt: number;
-  };
-  paymentTotals: {
-    cash: number;
-    debit: number;
-    credit: number;
-    transfer: number;
-  };
-  recent: Array<{
-    id: string;
-    vehicleNumber: string;
-    status: "active" | "completed" | "evaded";
-    entryTime: string;
-    exitTime?: string;
-    totalMinutes: number;
-    amountPaid: number;
-    outstandingAmount: number;
-    paymentMethod?: "cash" | "debit" | "credit" | "transfer";
-  }>;
-};
-
-const money = new Intl.NumberFormat("es-CL", {
-  style: "currency",
-  currency: "CLP",
-  maximumFractionDigits: 0,
-});
-
-const dateTime = new Intl.DateTimeFormat("es-CL", {
-  dateStyle: "short",
-  timeStyle: "short",
-  hour12: false,
-  timeZone: "America/Santiago",
-});
-
-const todayIso = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: "America/Santiago",
-}).format(new Date());
-
-function getToken() {
-  return window.localStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function saveToken(token: string) {
-  window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearToken() {
-  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-}
-
-function buildQuery(params: Record<string, string>) {
-  const query = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) {
-      query.set(key, value);
-    }
-  });
-
-  return query.toString();
-}
-
-async function adminApi<T>(
-  path: string,
-  token: string,
-  init?: RequestInit,
-): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-session": token,
-      ...init?.headers,
-    },
-  });
-
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(body.message ?? "No se pudo completar la operación");
-  }
-
-  return body as T;
-}
-
-function PresetFields({
-  preset,
-  date,
-  from,
-  to,
-  onDateChange,
-  onFromChange,
-  onToChange,
-}: {
-  preset: Preset;
-  date: string;
-  from: string;
-  to: string;
-  onDateChange: (value: string) => void;
-  onFromChange: (value: string) => void;
-  onToChange: (value: string) => void;
-}) {
-  if (preset === "range") {
-    return (
-      <>
-        <label>
-          Desde
-          <input
-            type="date"
-            value={from}
-            onChange={(event) => onFromChange(event.target.value)}
-          />
-        </label>
-        <label>
-          Hasta
-          <input
-            type="date"
-            value={to}
-            onChange={(event) => onToChange(event.target.value)}
-          />
-        </label>
-      </>
-    );
-  }
-
-  return (
-    <label>
-      Fecha base
-      <input
-        type="date"
-        value={date}
-        onChange={(event) => onDateChange(event.target.value)}
-      />
-    </label>
-  );
-}
-
-export default function AdminApp() {
-  const [token, setToken] = useState<string | null>(() => getToken());
+export default function AdminReportsPage() {
+  const [token, setToken] = useState<string | null>(() => getAdminToken());
   const [password, setPassword] = useState("");
   const [busyLogin, setBusyLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -207,8 +60,8 @@ export default function AdminApp() {
       setSummary(data);
     } catch (error) {
       const message = (error as Error).message;
-      if (message.toLowerCase().includes("sesión")) {
-        clearToken();
+      if (message.toLowerCase().includes("sesion")) {
+        clearAdminToken();
         setToken(null);
       }
       setNotice(message);
@@ -237,10 +90,10 @@ export default function AdminApp() {
 
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(body.message ?? "No se pudo iniciar sesión");
+        throw new Error(body.message ?? "No se pudo iniciar sesion");
       }
 
-      saveToken(body.token);
+      saveAdminToken(body.token);
       setToken(body.token);
       setPassword("");
     } catch (error) {
@@ -257,7 +110,7 @@ export default function AdminApp() {
       }).catch(() => undefined);
     }
 
-    clearToken();
+    clearAdminToken();
     setToken(null);
     setSummary(null);
     setNotice(null);
@@ -301,7 +154,7 @@ export default function AdminApp() {
     return (
       <main className="admin-shell">
         <header className="topbar admin-topbar">
-          <a className="brand-lockup brand-admin-link" href="/">
+          <a className="brand-lockup brand-admin-link" href="/admin">
             <span className="brand-mark" aria-hidden="true">
               M
             </span>
@@ -311,7 +164,7 @@ export default function AdminApp() {
             </div>
           </a>
           <a className="admin-back-link" href="/">
-            Volver
+            Operador
           </a>
         </header>
 
@@ -336,7 +189,7 @@ export default function AdminApp() {
   return (
     <main className="admin-shell">
       <header className="topbar admin-topbar">
-        <a className="brand-lockup brand-admin-link" href="/">
+        <a className="brand-lockup brand-admin-link" href="/admin">
           <span className="brand-mark" aria-hidden="true">
             M
           </span>
@@ -346,29 +199,29 @@ export default function AdminApp() {
           </div>
         </a>
         <a className="admin-back-link" href="/">
-          Volver
+          Operador
         </a>
       </header>
 
       <header className="admin-header">
         <div>
           <p className="admin-overline">Panel administrativo</p>
-          <h1>Reportes y exportación</h1>
+          <h1>Reportes y exportacion</h1>
           <p className="admin-subtle">Semana calculada como Lunes-Domingo.</p>
         </div>
         <button className="admin-logout" onClick={logout}>
-          Cerrar sesión
+          Cerrar sesion
         </button>
       </header>
 
       <section className="admin-filters">
         <label>
-          Filtro rápido
+          Filtro rapido
           <select
             value={preset}
             onChange={(event) => setPreset(event.target.value as Preset)}
           >
-            <option value="day">Día</option>
+            <option value="day">Dia</option>
             <option value="week">Semana</option>
             <option value="month">Mes</option>
             <option value="range">Rango</option>
@@ -408,8 +261,8 @@ export default function AdminApp() {
           >
             <option value="all">Todos</option>
             <option value="cash">Efectivo</option>
-            <option value="debit">Débito</option>
-            <option value="credit">Crédito</option>
+            <option value="debit">Debito</option>
+            <option value="credit">Credito</option>
             <option value="transfer">Transferencia</option>
           </select>
         </label>
@@ -419,7 +272,7 @@ export default function AdminApp() {
           <input
             value={vehicleNumber}
             onChange={(event) => setVehicleNumber(event.target.value)}
-            placeholder="ABCD12"
+            placeholder="BCDF12"
           />
         </label>
 
@@ -447,7 +300,7 @@ export default function AdminApp() {
               <strong>{summary.totals.movements}</strong>
             </article>
             <article>
-              <span>Recaudación</span>
+              <span>Recaudacion</span>
               <strong>{money.format(summary.totals.revenue)}</strong>
             </article>
             <article>
@@ -482,9 +335,7 @@ export default function AdminApp() {
                       <td>{row.status}</td>
                       <td>{dateTime.format(new Date(row.entryTime))}</td>
                       <td>
-                        {row.exitTime
-                          ? dateTime.format(new Date(row.exitTime))
-                          : "-"}
+                        {row.exitTime ? dateTime.format(new Date(row.exitTime)) : "-"}
                       </td>
                       <td>{row.totalMinutes}</td>
                       <td>{row.paymentMethod ?? "-"}</td>
