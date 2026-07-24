@@ -1,15 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import AdminApp from "./AdminApp";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3500";
 
 type PaymentMethod = "cash" | "debit" | "credit" | "transfer";
-type EvasionReasonCode =
-  | "left-without-payment"
-  | "payment-refused"
-  | "operator-record-correction"
-  | "unknown"
-  | "other";
-type DialogMode = "charge" | "evasion";
 
 type ParkingRecord = {
   _id: string;
@@ -27,8 +21,6 @@ type ParkingRecord = {
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
   outstandingAmount?: number;
-  evasionReasonCode?: EvasionReasonCode;
-  evasionObservation?: string;
 };
 
 type ParkingLocation = {
@@ -39,6 +31,16 @@ type ParkingLocation = {
   timezone: string;
   currency: string;
   ratePerMinute: number;
+};
+
+type ParkingConfig = {
+  locationId: string;
+  locationCode: string;
+  ratePerMinute: number;
+  currency: string;
+  openTime?: string;
+  closeTime?: string;
+  autoEvasionTime?: string;
 };
 
 type Summary = {
@@ -68,14 +70,6 @@ const paymentLabels: Record<PaymentMethod, string> = {
   transfer: "Transferencia",
 };
 
-const evasionReasonLabels: Record<EvasionReasonCode, string> = {
-  "left-without-payment": "Se retiró sin pagar",
-  "payment-refused": "Rechazó el pago",
-  "operator-record-correction": "Corrección del registro",
-  unknown: "Motivo desconocido",
-  other: "Otro motivo",
-};
-
 const money = new Intl.NumberFormat("es-CL", {
   style: "currency",
   currency: "CLP",
@@ -97,6 +91,17 @@ const shortDate = new Intl.DateTimeFormat("es-CL", {
   hour12: false,
   timeZone: "America/Santiago",
 });
+
+function chileDayMonth(dateValue: number): string {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Santiago",
+  });
+  const parts = formatter.formatToParts(new Date(dateValue));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.day}-${map.month}`;
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -136,23 +141,37 @@ function movementTotal(record: ParkingRecord) {
   return record.totalCost ?? record.amountPaid ?? 0;
 }
 
-export default function Home() {
+function parseTimeToMinutes(value?: string): number | null {
+  if (!value) return null;
+  const matched = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!matched) return null;
+  return Number(matched[1]) * 60 + Number(matched[2]);
+}
+
+function getChileLocalMinutes(nowValue: number): number {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Santiago",
+  });
+  const parts = formatter.formatToParts(new Date(nowValue));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return Number(map.hour) * 60 + Number(map.minute);
+}
+
+export function OperatorApp() {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<ParkingRecord[]>([]);
   const [history, setHistory] = useState<ParkingRecord[]>([]);
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [location, setLocation] = useState<ParkingLocation | null>(null);
+  const [parkingConfig, setParkingConfig] = useState<ParkingConfig | null>(null);
   const [selected, setSelected] = useState<ParkingRecord | null>(null);
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [evasionReason, setEvasionReason] =
-    useState<EvasionReasonCode>("left-without-payment");
-  const [evasionObservation, setEvasionObservation] = useState("");
-  const [busy, setBusy] = useState<"entry" | "exit" | "evasion" | null>(
-    null,
-  );
+  const [busy, setBusy] = useState<"entry" | "exit" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -162,26 +181,27 @@ export default function Home() {
       const [
         activeRecords,
         completedRecords,
-        evadedRecords,
         today,
         currentLocation,
+        config,
       ] =
         await Promise.all([
           api<ParkingRecord[]>("/parking?status=active"),
           api<ParkingRecord[]>("/parking?status=completed"),
-          api<ParkingRecord[]>("/parking?status=evaded"),
           api<Summary>("/parking/summary/today"),
           api<ParkingLocation>("/locations/current"),
+          api<ParkingConfig>("/parking/config"),
         ]);
-      const movements = [...completedRecords, ...evadedRecords].sort(
+      const movements = [...completedRecords].sort(
         (left, right) =>
           new Date(right.exitTime ?? right.entryTime).getTime() -
           new Date(left.exitTime ?? left.entryTime).getTime(),
       );
       setActive(activeRecords);
-      setHistory(movements);
+      setHistory(movements.slice(0, 10));
       setSummary(today);
       setLocation(currentLocation);
+      setParkingConfig(config);
       setConnected(true);
     } catch {
       setConnected(false);
@@ -209,7 +229,6 @@ export default function Home() {
       if (event.key === "Escape") {
         setSelected(null);
         setReceipt(null);
-        setDialogMode(null);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
@@ -223,6 +242,11 @@ export default function Home() {
 
   const registerEntry = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isEntryAllowedByTime) {
+      setNotice(`Fuera de horario de ingreso (${operatingHoursLabel}).`);
+      return;
+    }
+
     if (vehicleNumber.length < 4) {
       setNotice("Ingresa una patente válida de al menos 4 caracteres.");
       return;
@@ -258,32 +282,7 @@ export default function Home() {
         }),
       });
       setSelected(null);
-      setDialogMode(null);
       setReceipt(completed);
-      await loadData();
-    } catch (error) {
-      setNotice((error as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const registerEvasion = async () => {
-    if (!selected) return;
-    setBusy("evasion");
-    setNotice(null);
-    try {
-      const evaded = await api<ParkingRecord>("/parking/evasion", {
-        method: "POST",
-        body: JSON.stringify({
-          vehicleNumber: selected.vehicleNumber,
-          reasonCode: evasionReason,
-          observation: evasionObservation.trim() || undefined,
-        }),
-      });
-      setSelected(null);
-      setDialogMode(null);
-      setReceipt(evaded);
       await loadData();
     } catch (error) {
       setNotice((error as Error).message);
@@ -296,22 +295,11 @@ export default function Home() {
     setPaymentMethod("cash");
     setReceipt(null);
     setSelected(record);
-    setDialogMode("charge");
-  };
-
-  const openEvasion = (record: ParkingRecord) => {
-    setEvasionReason("left-without-payment");
-    setEvasionObservation("");
-    setReceipt(null);
-    setSelected(record);
-    setDialogMode("evasion");
   };
 
   const closeDialog = () => {
     setSelected(null);
     setReceipt(null);
-    setDialogMode(null);
-    setEvasionObservation("");
   };
 
   const estimatedMinutes = selected
@@ -320,11 +308,27 @@ export default function Home() {
   const estimatedTotal = selected
     ? estimatedMinutes * (selected.ratePerMinute || summary.ratePerMinute)
     : 0;
+  const openMinutes = parseTimeToMinutes(parkingConfig?.openTime);
+  const closeMinutes = parseTimeToMinutes(parkingConfig?.closeTime);
+  const chileMinutes = getChileLocalMinutes(now);
+  const isEntryAllowedByTime =
+    openMinutes === null || closeMinutes === null
+      ? true
+      : chileMinutes >= openMinutes && chileMinutes < closeMinutes;
+  const operatingHoursLabel =
+    parkingConfig?.openTime && parkingConfig?.closeTime
+      ? `${parkingConfig.openTime} a ${parkingConfig.closeTime}`
+      : "horario configurado";
 
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-lockup">
+        <a
+          className="brand-lockup brand-admin-link"
+          href="/admin"
+          aria-label="Abrir modo administrador"
+          title="Modo administrador"
+        >
           <span className="brand-mark" aria-hidden="true">
             M
           </span>
@@ -334,7 +338,7 @@ export default function Home() {
             </p>
             <h1>Minuto</h1>
           </div>
-        </div>
+        </a>
         <div className="topbar-status">
           <span className={`status-dot ${connected ? "is-online" : ""}`} />
           {connected ? "Sistema conectado" : "Backend sin conexión"}
@@ -342,42 +346,38 @@ export default function Home() {
       </header>
 
       <section className="dashboard-heading">
-        <div>
-          <p className="eyebrow">Caja de hoy</p>
-          <h2>Buenos días, operador.</h2>
-          <p>
-            {location
-              ? `${location.name}${location.address ? ` · ${location.address}` : ""}`
-              : "Registra entradas y cobra salidas sin perder tiempo."}
-          </p>
-        </div>
-        <div className="rate-chip">
+        <article className="dash-chip">
+          <span>Fecha</span>
+          <strong>{chileDayMonth(now)}</strong>
+        </article>
+        <article className="dash-chip">
+          <span>Locación</span>
+          <strong className="chip-location">
+            {location?.name ?? "Control de estacionamiento"}
+          </strong>
+        </article>
+        <article className="dash-chip rate-chip">
           <span>Tarifa vigente</span>
           <strong>{money.format(summary.ratePerMinute)}</strong>
           <small>por minuto</small>
-        </div>
+        </article>
       </section>
 
       <section className="summary-grid" aria-label="Resumen del día">
         <article className="metric metric-highlight">
           <span>Recaudación</span>
           <strong>{money.format(summary.revenue)}</strong>
-          <small>{summary.completedVehicles} cobros completados</small>
+          <small>{summary.completedVehicles} cobros completados desde 08:00</small>
         </article>
         <article className="metric">
           <span>Vehículos dentro</span>
           <strong>{summary.activeVehicles}</strong>
-          <small>estacionamientos activos</small>
+          <small>ingresados desde 08:00</small>
         </article>
         <article className="metric">
           <span>Minutos cobrados</span>
           <strong>{summary.billedMinutes}</strong>
-          <small>acumulado de hoy</small>
-        </article>
-        <article className="metric metric-evasion">
-          <span>Evasiones</span>
-          <strong>{money.format(summary.evadedAmount)}</strong>
-          <small>{summary.evadedVehicles} salidas sin pago</small>
+          <small>acumulado desde 08:00</small>
         </article>
       </section>
 
@@ -422,10 +422,16 @@ export default function Home() {
             <p className="field-help">
               La hora de entrada se asignará automáticamente.
             </p>
+            {!isEntryAllowedByTime && (
+              <p className="field-help field-help-warning">
+                Ingresos habilitados entre {operatingHoursLabel}. Fuera de ese
+                horario solo se permiten cobros y salidas.
+              </p>
+            )}
             <button
               className="primary-button"
               type="submit"
-              disabled={busy === "entry"}
+              disabled={busy === "entry" || !isEntryAllowedByTime}
             >
               {busy === "entry" ? "Registrando…" : "Registrar entrada"}
               <span aria-hidden="true">→</span>
@@ -483,13 +489,6 @@ export default function Home() {
                       >
                         Cobrar salida
                       </button>
-                      <button
-                        className="evasion-button"
-                        type="button"
-                        onClick={() => openEvasion(record)}
-                      >
-                        Salida sin pago
-                      </button>
                     </div>
                   </div>
                 );
@@ -503,9 +502,9 @@ export default function Home() {
         <div className="panel-heading history-heading">
           <div>
             <p className="eyebrow">Actividad reciente</p>
-            <h3>Últimos movimientos</h3>
+            <h3>Últimos 10 movimientos</h3>
           </div>
-          <span className="history-count">{history.length} movimientos</span>
+          <span className="history-count">{history.length} de 10</span>
         </div>
         <div className="history-table-wrap">
           <table>
@@ -540,21 +539,9 @@ export default function Home() {
                     </td>
                     <td>{durationLabel(record.totalMinutes ?? 0)}</td>
                     <td>
-                      {record.status === "evaded" ? (
-                        <span className="status-badge status-evaded">
-                          Evasión
-                        </span>
-                      ) : record.paymentMethod ? (
-                        paymentLabels[record.paymentMethod]
-                      ) : (
-                        "—"
-                      )}
+                      {record.paymentMethod ? paymentLabels[record.paymentMethod] : "—"}
                     </td>
-                    <td
-                      className={`align-right table-total ${
-                        record.status === "evaded" ? "table-debt" : ""
-                      }`}
-                    >
+                    <td className="align-right table-total">
                       {money.format(movementTotal(record))}
                     </td>
                   </tr>
@@ -575,35 +562,14 @@ export default function Home() {
           >
             {receipt ? (
               <>
-                <div
-                  className={`receipt-check ${
-                    receipt.status === "evaded" ? "is-evasion" : ""
-                  }`}
-                  aria-hidden="true"
-                >
-                  {receipt.status === "evaded" ? "!" : "✓"}
+                <div className="receipt-check" aria-hidden="true">
+                  ✓
                 </div>
-                <p className="eyebrow">
-                  {receipt.status === "evaded"
-                    ? "Evasión registrada"
-                    : "Pago registrado"}
-                </p>
-                <h3 id="charge-title">
-                  {receipt.status === "evaded"
-                    ? "Salida sin pago"
-                    : "Salida completada"}
-                </h3>
+                <p className="eyebrow">Pago registrado</p>
+                <h3 id="charge-title">Salida completada</h3>
                 <div className="receipt-plate">{receipt.vehicleNumber}</div>
-                <div
-                  className={`receipt-total ${
-                    receipt.status === "evaded" ? "is-evasion" : ""
-                  }`}
-                >
-                  <span>
-                    {receipt.status === "evaded"
-                      ? "Deuda pendiente"
-                      : "Total cobrado"}
-                  </span>
+                <div className="receipt-total">
+                  <span>Total cobrado</span>
                   <strong>
                     {money.format(movementTotal(receipt))}
                   </strong>
@@ -627,11 +593,7 @@ export default function Home() {
                 >
                   ×
                 </button>
-                <p className="eyebrow">
-                  {dialogMode === "evasion"
-                    ? "Registrar salida sin pago"
-                    : "Cobrar salida"}
-                </p>
+                <p className="eyebrow">Cobrar salida</p>
                 <h3 id="charge-title">{selected.vehicleNumber}</h3>
                 <div className="charge-breakdown">
                   <div>
@@ -652,118 +614,43 @@ export default function Home() {
                     </strong>
                   </div>
                 </div>
-                <div
-                  className={`charge-total ${
-                    dialogMode === "evasion" ? "is-evasion" : ""
-                  }`}
-                >
-                  <span>
-                    {dialogMode === "evasion"
-                      ? "Deuda a registrar"
-                      : "Total estimado"}
-                  </span>
+                <div className="charge-total">
+                  <span>Total estimado</span>
                   <strong>{money.format(estimatedTotal)}</strong>
                 </div>
-                {dialogMode === "evasion" ? (
-                  <>
-                    <div className="evasion-warning" role="note">
-                      Esta operación cerrará la estadía sin pago y dejará el
-                      monto como deuda pendiente. Verifica la patente antes de
-                      continuar.
-                    </div>
-                    <div className="form-field">
-                      <label htmlFor="evasion-reason">Motivo</label>
-                      <select
-                        id="evasion-reason"
-                        value={evasionReason}
-                        onChange={(event) =>
-                          setEvasionReason(
-                            event.target.value as EvasionReasonCode,
-                          )
-                        }
-                      >
-                        {(
-                          Object.keys(
-                            evasionReasonLabels,
-                          ) as EvasionReasonCode[]
-                        ).map((reason) => (
-                          <option key={reason} value={reason}>
-                            {evasionReasonLabels[reason]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-field">
-                      <label htmlFor="evasion-observation">
-                        Observación <span>opcional</span>
-                      </label>
-                      <textarea
-                        id="evasion-observation"
-                        value={evasionObservation}
-                        onChange={(event) =>
-                          setEvasionObservation(event.target.value)
-                        }
-                        maxLength={500}
-                        rows={3}
-                        placeholder="Agrega un detalle breve de lo ocurrido"
-                      />
-                      <small>{evasionObservation.length}/500</small>
-                    </div>
-                    <button
-                      className="primary-button danger-button"
-                      type="button"
-                      onClick={registerEvasion}
-                      disabled={busy === "evasion"}
-                    >
-                      {busy === "evasion"
-                        ? "Registrando…"
-                        : "Confirmar salida sin pago"}
-                    </button>
-                    <p className="dialog-note">
-                      No se sumará este monto a la recaudación del día.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <fieldset>
-                      <legend>Medio de pago</legend>
-                      <div className="payment-grid">
-                        {(Object.keys(paymentLabels) as PaymentMethod[]).map(
-                          (method) => (
-                            <label
-                              key={method}
-                              className={
-                                paymentMethod === method ? "is-selected" : ""
-                              }
-                            >
-                              <input
-                                type="radio"
-                                name="payment"
-                                value={method}
-                                checked={paymentMethod === method}
-                                onChange={() => setPaymentMethod(method)}
-                              />
-                              {paymentLabels[method]}
-                            </label>
-                          ),
-                        )}
-                      </div>
-                    </fieldset>
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={registerExit}
-                      disabled={busy === "exit"}
-                    >
-                      {busy === "exit"
-                        ? "Procesando…"
-                        : "Confirmar cobro y salida"}
-                    </button>
-                    <p className="dialog-note">
-                      El total final se calcula al confirmar la salida.
-                    </p>
-                  </>
-                )}
+                <fieldset>
+                  <legend>Medio de pago</legend>
+                  <div className="payment-grid">
+                    {(Object.keys(paymentLabels) as PaymentMethod[]).map(
+                      (method) => (
+                        <label
+                          key={method}
+                          className={paymentMethod === method ? "is-selected" : ""}
+                        >
+                          <input
+                            type="radio"
+                            name="payment"
+                            value={method}
+                            checked={paymentMethod === method}
+                            onChange={() => setPaymentMethod(method)}
+                          />
+                          {paymentLabels[method]}
+                        </label>
+                      ),
+                    )}
+                  </div>
+                </fieldset>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={registerExit}
+                  disabled={busy === "exit"}
+                >
+                  {busy === "exit" ? "Procesando…" : "Confirmar cobro y salida"}
+                </button>
+                <p className="dialog-note">
+                  El total final se calcula al confirmar la salida.
+                </p>
               </>
             ) : null}
           </section>
@@ -771,4 +658,12 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+export default function App() {
+  if (window.location.pathname.startsWith("/admin")) {
+    return <AdminApp />;
+  }
+
+  return <OperatorApp />;
 }
