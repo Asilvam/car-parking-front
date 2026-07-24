@@ -4,13 +4,6 @@ import AdminApp from "./AdminApp";
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3500";
 
 type PaymentMethod = "cash" | "debit" | "credit" | "transfer";
-type EvasionReasonCode =
-  | "left-without-payment"
-  | "payment-refused"
-  | "operator-record-correction"
-  | "unknown"
-  | "other";
-type DialogMode = "charge" | "evasion";
 
 type ParkingRecord = {
   _id: string;
@@ -28,8 +21,6 @@ type ParkingRecord = {
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
   outstandingAmount?: number;
-  evasionReasonCode?: EvasionReasonCode;
-  evasionObservation?: string;
 };
 
 type ParkingLocation = {
@@ -77,14 +68,6 @@ const paymentLabels: Record<PaymentMethod, string> = {
   debit: "Débito",
   credit: "Crédito",
   transfer: "Transferencia",
-};
-
-const evasionReasonLabels: Record<EvasionReasonCode, string> = {
-  "left-without-payment": "Se retiró sin pagar",
-  "payment-refused": "Rechazó el pago",
-  "operator-record-correction": "Corrección del registro",
-  unknown: "Motivo desconocido",
-  other: "Otro motivo",
 };
 
 const money = new Intl.NumberFormat("es-CL", {
@@ -187,14 +170,8 @@ export function OperatorApp() {
   const [parkingConfig, setParkingConfig] = useState<ParkingConfig | null>(null);
   const [selected, setSelected] = useState<ParkingRecord | null>(null);
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [evasionReason, setEvasionReason] =
-    useState<EvasionReasonCode>("left-without-payment");
-  const [evasionObservation, setEvasionObservation] = useState("");
-  const [busy, setBusy] = useState<"entry" | "exit" | "evasion" | null>(
-    null,
-  );
+  const [busy, setBusy] = useState<"entry" | "exit" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -204,7 +181,6 @@ export function OperatorApp() {
       const [
         activeRecords,
         completedRecords,
-        evadedRecords,
         today,
         currentLocation,
         config,
@@ -212,12 +188,11 @@ export function OperatorApp() {
         await Promise.all([
           api<ParkingRecord[]>("/parking?status=active"),
           api<ParkingRecord[]>("/parking?status=completed"),
-          api<ParkingRecord[]>("/parking?status=evaded"),
           api<Summary>("/parking/summary/today"),
           api<ParkingLocation>("/locations/current"),
           api<ParkingConfig>("/parking/config"),
         ]);
-      const movements = [...completedRecords, ...evadedRecords].sort(
+      const movements = [...completedRecords].sort(
         (left, right) =>
           new Date(right.exitTime ?? right.entryTime).getTime() -
           new Date(left.exitTime ?? left.entryTime).getTime(),
@@ -254,7 +229,6 @@ export function OperatorApp() {
       if (event.key === "Escape") {
         setSelected(null);
         setReceipt(null);
-        setDialogMode(null);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
@@ -308,32 +282,7 @@ export function OperatorApp() {
         }),
       });
       setSelected(null);
-      setDialogMode(null);
       setReceipt(completed);
-      await loadData();
-    } catch (error) {
-      setNotice((error as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const registerEvasion = async () => {
-    if (!selected) return;
-    setBusy("evasion");
-    setNotice(null);
-    try {
-      const evaded = await api<ParkingRecord>("/parking/evasion", {
-        method: "POST",
-        body: JSON.stringify({
-          vehicleNumber: selected.vehicleNumber,
-          reasonCode: evasionReason,
-          observation: evasionObservation.trim() || undefined,
-        }),
-      });
-      setSelected(null);
-      setDialogMode(null);
-      setReceipt(evaded);
       await loadData();
     } catch (error) {
       setNotice((error as Error).message);
@@ -346,22 +295,11 @@ export function OperatorApp() {
     setPaymentMethod("cash");
     setReceipt(null);
     setSelected(record);
-    setDialogMode("charge");
-  };
-
-  const openEvasion = (record: ParkingRecord) => {
-    setEvasionReason("left-without-payment");
-    setEvasionObservation("");
-    setReceipt(null);
-    setSelected(record);
-    setDialogMode("evasion");
   };
 
   const closeDialog = () => {
     setSelected(null);
     setReceipt(null);
-    setDialogMode(null);
-    setEvasionObservation("");
   };
 
   const estimatedMinutes = selected
@@ -437,11 +375,6 @@ export function OperatorApp() {
           <span>Minutos cobrados</span>
           <strong>{summary.billedMinutes}</strong>
           <small>acumulado desde 08:00</small>
-        </article>
-        <article className="metric metric-evasion">
-          <span>Evasiones</span>
-          <strong>{money.format(summary.evadedAmount)}</strong>
-          <small>{summary.evadedVehicles} salidas sin pago desde 08:00</small>
         </article>
       </section>
 
@@ -553,13 +486,6 @@ export function OperatorApp() {
                       >
                         Cobrar salida
                       </button>
-                      <button
-                        className="evasion-button"
-                        type="button"
-                        onClick={() => openEvasion(record)}
-                      >
-                        Salida sin pago
-                      </button>
                     </div>
                   </div>
                 );
@@ -610,21 +536,9 @@ export function OperatorApp() {
                     </td>
                     <td>{durationLabel(record.totalMinutes ?? 0)}</td>
                     <td>
-                      {record.status === "evaded" ? (
-                        <span className="status-badge status-evaded">
-                          Evasión
-                        </span>
-                      ) : record.paymentMethod ? (
-                        paymentLabels[record.paymentMethod]
-                      ) : (
-                        "—"
-                      )}
+                      {record.paymentMethod ? paymentLabels[record.paymentMethod] : "—"}
                     </td>
-                    <td
-                      className={`align-right table-total ${
-                        record.status === "evaded" ? "table-debt" : ""
-                      }`}
-                    >
+                    <td className="align-right table-total">
                       {money.format(movementTotal(record))}
                     </td>
                   </tr>
@@ -645,35 +559,14 @@ export function OperatorApp() {
           >
             {receipt ? (
               <>
-                <div
-                  className={`receipt-check ${
-                    receipt.status === "evaded" ? "is-evasion" : ""
-                  }`}
-                  aria-hidden="true"
-                >
-                  {receipt.status === "evaded" ? "!" : "✓"}
+                <div className="receipt-check" aria-hidden="true">
+                  ✓
                 </div>
-                <p className="eyebrow">
-                  {receipt.status === "evaded"
-                    ? "Evasión registrada"
-                    : "Pago registrado"}
-                </p>
-                <h3 id="charge-title">
-                  {receipt.status === "evaded"
-                    ? "Salida sin pago"
-                    : "Salida completada"}
-                </h3>
+                <p className="eyebrow">Pago registrado</p>
+                <h3 id="charge-title">Salida completada</h3>
                 <div className="receipt-plate">{receipt.vehicleNumber}</div>
-                <div
-                  className={`receipt-total ${
-                    receipt.status === "evaded" ? "is-evasion" : ""
-                  }`}
-                >
-                  <span>
-                    {receipt.status === "evaded"
-                      ? "Deuda pendiente"
-                      : "Total cobrado"}
-                  </span>
+                <div className="receipt-total">
+                  <span>Total cobrado</span>
                   <strong>
                     {money.format(movementTotal(receipt))}
                   </strong>
@@ -697,11 +590,7 @@ export function OperatorApp() {
                 >
                   ×
                 </button>
-                <p className="eyebrow">
-                  {dialogMode === "evasion"
-                    ? "Registrar salida sin pago"
-                    : "Cobrar salida"}
-                </p>
+                <p className="eyebrow">Cobrar salida</p>
                 <h3 id="charge-title">{selected.vehicleNumber}</h3>
                 <div className="charge-breakdown">
                   <div>
@@ -722,118 +611,43 @@ export function OperatorApp() {
                     </strong>
                   </div>
                 </div>
-                <div
-                  className={`charge-total ${
-                    dialogMode === "evasion" ? "is-evasion" : ""
-                  }`}
-                >
-                  <span>
-                    {dialogMode === "evasion"
-                      ? "Deuda a registrar"
-                      : "Total estimado"}
-                  </span>
+                <div className="charge-total">
+                  <span>Total estimado</span>
                   <strong>{money.format(estimatedTotal)}</strong>
                 </div>
-                {dialogMode === "evasion" ? (
-                  <>
-                    <div className="evasion-warning" role="note">
-                      Esta operación cerrará la estadía sin pago y dejará el
-                      monto como deuda pendiente. Verifica la patente antes de
-                      continuar.
-                    </div>
-                    <div className="form-field">
-                      <label htmlFor="evasion-reason">Motivo</label>
-                      <select
-                        id="evasion-reason"
-                        value={evasionReason}
-                        onChange={(event) =>
-                          setEvasionReason(
-                            event.target.value as EvasionReasonCode,
-                          )
-                        }
-                      >
-                        {(
-                          Object.keys(
-                            evasionReasonLabels,
-                          ) as EvasionReasonCode[]
-                        ).map((reason) => (
-                          <option key={reason} value={reason}>
-                            {evasionReasonLabels[reason]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-field">
-                      <label htmlFor="evasion-observation">
-                        Observación <span>opcional</span>
-                      </label>
-                      <textarea
-                        id="evasion-observation"
-                        value={evasionObservation}
-                        onChange={(event) =>
-                          setEvasionObservation(event.target.value)
-                        }
-                        maxLength={500}
-                        rows={3}
-                        placeholder="Agrega un detalle breve de lo ocurrido"
-                      />
-                      <small>{evasionObservation.length}/500</small>
-                    </div>
-                    <button
-                      className="primary-button danger-button"
-                      type="button"
-                      onClick={registerEvasion}
-                      disabled={busy === "evasion"}
-                    >
-                      {busy === "evasion"
-                        ? "Registrando…"
-                        : "Confirmar salida sin pago"}
-                    </button>
-                    <p className="dialog-note">
-                      No se sumará este monto a la recaudación del día.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <fieldset>
-                      <legend>Medio de pago</legend>
-                      <div className="payment-grid">
-                        {(Object.keys(paymentLabels) as PaymentMethod[]).map(
-                          (method) => (
-                            <label
-                              key={method}
-                              className={
-                                paymentMethod === method ? "is-selected" : ""
-                              }
-                            >
-                              <input
-                                type="radio"
-                                name="payment"
-                                value={method}
-                                checked={paymentMethod === method}
-                                onChange={() => setPaymentMethod(method)}
-                              />
-                              {paymentLabels[method]}
-                            </label>
-                          ),
-                        )}
-                      </div>
-                    </fieldset>
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={registerExit}
-                      disabled={busy === "exit"}
-                    >
-                      {busy === "exit"
-                        ? "Procesando…"
-                        : "Confirmar cobro y salida"}
-                    </button>
-                    <p className="dialog-note">
-                      El total final se calcula al confirmar la salida.
-                    </p>
-                  </>
-                )}
+                <fieldset>
+                  <legend>Medio de pago</legend>
+                  <div className="payment-grid">
+                    {(Object.keys(paymentLabels) as PaymentMethod[]).map(
+                      (method) => (
+                        <label
+                          key={method}
+                          className={paymentMethod === method ? "is-selected" : ""}
+                        >
+                          <input
+                            type="radio"
+                            name="payment"
+                            value={method}
+                            checked={paymentMethod === method}
+                            onChange={() => setPaymentMethod(method)}
+                          />
+                          {paymentLabels[method]}
+                        </label>
+                      ),
+                    )}
+                  </div>
+                </fieldset>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={registerExit}
+                  disabled={busy === "exit"}
+                >
+                  {busy === "exit" ? "Procesando…" : "Confirmar cobro y salida"}
+                </button>
+                <p className="dialog-note">
+                  El total final se calcula al confirmar la salida.
+                </p>
               </>
             ) : null}
           </section>

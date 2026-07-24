@@ -12,8 +12,8 @@ test("usa una entrada React y Vite tradicional", async () => {
   assert.match(html, /src="\/src\/main\.tsx"/);
   assert.match(main, /createRoot/);
   assert.match(app, /import\.meta\.env\.VITE_API_URL/);
-  assert.match(app, /\/parking\/evasion/);
+  assert.doesNotMatch(app, /\/parking\/evasion/);
   assert.match(app, /\/locations\/current/);
-  assert.match(app, /Salida sin pago/);
+  assert.doesNotMatch(app, /Salida sin pago/);
   assert.doesNotMatch(app, /next\/|process\.env|vinext/);
 });
