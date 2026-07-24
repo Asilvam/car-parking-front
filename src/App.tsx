@@ -41,6 +41,16 @@ type ParkingLocation = {
   ratePerMinute: number;
 };
 
+type ParkingConfig = {
+  locationId: string;
+  locationCode: string;
+  ratePerMinute: number;
+  currency: string;
+  openTime?: string;
+  closeTime?: string;
+  autoEvasionTime?: string;
+};
+
 type Summary = {
   activeVehicles: number;
   completedVehicles: number;
@@ -136,6 +146,25 @@ function movementTotal(record: ParkingRecord) {
   return record.totalCost ?? record.amountPaid ?? 0;
 }
 
+function parseTimeToMinutes(value?: string): number | null {
+  if (!value) return null;
+  const matched = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!matched) return null;
+  return Number(matched[1]) * 60 + Number(matched[2]);
+}
+
+function getChileLocalMinutes(nowValue: number): number {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Santiago",
+  });
+  const parts = formatter.formatToParts(new Date(nowValue));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return Number(map.hour) * 60 + Number(map.minute);
+}
+
 export default function Home() {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [search, setSearch] = useState("");
@@ -143,6 +172,7 @@ export default function Home() {
   const [history, setHistory] = useState<ParkingRecord[]>([]);
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [location, setLocation] = useState<ParkingLocation | null>(null);
+  const [parkingConfig, setParkingConfig] = useState<ParkingConfig | null>(null);
   const [selected, setSelected] = useState<ParkingRecord | null>(null);
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -165,6 +195,7 @@ export default function Home() {
         evadedRecords,
         today,
         currentLocation,
+        config,
       ] =
         await Promise.all([
           api<ParkingRecord[]>("/parking?status=active"),
@@ -172,6 +203,7 @@ export default function Home() {
           api<ParkingRecord[]>("/parking?status=evaded"),
           api<Summary>("/parking/summary/today"),
           api<ParkingLocation>("/locations/current"),
+          api<ParkingConfig>("/parking/config"),
         ]);
       const movements = [...completedRecords, ...evadedRecords].sort(
         (left, right) =>
@@ -182,6 +214,7 @@ export default function Home() {
       setHistory(movements);
       setSummary(today);
       setLocation(currentLocation);
+      setParkingConfig(config);
       setConnected(true);
     } catch {
       setConnected(false);
@@ -223,6 +256,11 @@ export default function Home() {
 
   const registerEntry = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isEntryAllowedByTime) {
+      setNotice(`Fuera de horario de ingreso (${operatingHoursLabel}).`);
+      return;
+    }
+
     if (vehicleNumber.length < 4) {
       setNotice("Ingresa una patente válida de al menos 4 caracteres.");
       return;
@@ -320,6 +358,17 @@ export default function Home() {
   const estimatedTotal = selected
     ? estimatedMinutes * (selected.ratePerMinute || summary.ratePerMinute)
     : 0;
+  const openMinutes = parseTimeToMinutes(parkingConfig?.openTime);
+  const closeMinutes = parseTimeToMinutes(parkingConfig?.closeTime);
+  const chileMinutes = getChileLocalMinutes(now);
+  const isEntryAllowedByTime =
+    openMinutes === null || closeMinutes === null
+      ? true
+      : chileMinutes >= openMinutes && chileMinutes < closeMinutes;
+  const operatingHoursLabel =
+    parkingConfig?.openTime && parkingConfig?.closeTime
+      ? `${parkingConfig.openTime} a ${parkingConfig.closeTime}`
+      : "horario configurado";
 
   return (
     <main className="app-shell">
@@ -422,10 +471,16 @@ export default function Home() {
             <p className="field-help">
               La hora de entrada se asignará automáticamente.
             </p>
+            {!isEntryAllowedByTime && (
+              <p className="field-help field-help-warning">
+                Ingresos habilitados entre {operatingHoursLabel}. Fuera de ese
+                horario solo se permiten cobros y salidas.
+              </p>
+            )}
             <button
               className="primary-button"
               type="submit"
-              disabled={busy === "entry"}
+              disabled={busy === "entry" || !isEntryAllowedByTime}
             >
               {busy === "entry" ? "Registrando…" : "Registrar entrada"}
               <span aria-hidden="true">→</span>
