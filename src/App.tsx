@@ -336,7 +336,7 @@ export function OperatorApp() {
             <p className="eyebrow">
               {location?.name ?? "Control de estacionamiento"}
             </p>
-            <h1>Mi Minuto</h1>
+            <h1>Minuto</h1>
           </div>
         </a>
         <div className="topbar-status">
