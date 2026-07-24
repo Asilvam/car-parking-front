@@ -930,7 +930,8 @@ th {
   .summary-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-top: 10px;
+    margin-bottom: 6px;
   }
 
   .metric {
@@ -949,7 +950,7 @@ th {
   }
 
   .history-panel {
-    margin-top: 12px;
+    margin-top: 6px;
   }
 
   .active-heading {
