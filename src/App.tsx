@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import AdminApp from "./AdminApp";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3500";
 
@@ -165,7 +166,7 @@ function getChileLocalMinutes(nowValue: number): number {
   return Number(map.hour) * 60 + Number(map.minute);
 }
 
-export default function Home() {
+export function OperatorApp() {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<ParkingRecord[]>([]);
@@ -826,4 +827,12 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+export default function App() {
+  if (window.location.pathname.startsWith("/admin")) {
+    return <AdminApp />;
+  }
+
+  return <OperatorApp />;
 }
