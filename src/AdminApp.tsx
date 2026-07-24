@@ -300,6 +300,21 @@ export default function AdminApp() {
   if (!token) {
     return (
       <main className="admin-shell">
+        <header className="topbar admin-topbar">
+          <a className="brand-lockup brand-admin-link" href="/">
+            <span className="brand-mark" aria-hidden="true">
+              M
+            </span>
+            <div>
+              <p className="eyebrow">Modo administrador</p>
+              <h1>Minuto</h1>
+            </div>
+          </a>
+          <a className="admin-back-link" href="/">
+            Volver
+          </a>
+        </header>
+
         <section className="admin-login">
           <h1>Acceso administrador</h1>
           <form onSubmit={login}>
@@ -320,6 +335,21 @@ export default function AdminApp() {
 
   return (
     <main className="admin-shell">
+      <header className="topbar admin-topbar">
+        <a className="brand-lockup brand-admin-link" href="/">
+          <span className="brand-mark" aria-hidden="true">
+            M
+          </span>
+          <div>
+            <p className="eyebrow">Modo administrador</p>
+            <h1>Minuto</h1>
+          </div>
+        </a>
+        <a className="admin-back-link" href="/">
+          Volver
+        </a>
+      </header>
+
       <header className="admin-header">
         <div>
           <p className="admin-overline">Panel administrativo</p>

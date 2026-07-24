@@ -218,7 +218,7 @@ button:disabled {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: 1.25fr repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -1027,6 +1027,26 @@ th {
   padding: 24px;
 }
 
+.admin-topbar {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.admin-back-link {
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 253, 247, 0.86);
+}
+
+.admin-back-link:hover {
+  background: #f3f1e9;
+}
+
 .admin-login {
   width: min(460px, 100%);
   margin: 64px auto;
@@ -1192,6 +1212,10 @@ th {
 @media (max-width: 720px) {
   .admin-shell {
     padding: 14px;
+  }
+
+  .admin-topbar {
+    margin-bottom: 12px;
   }
 
   .admin-header {
