@@ -301,6 +301,7 @@ export default function AdminApp() {
     return (
       <main className="admin-shell">
         <section className="admin-login">
+          <h1>Acceso administrador</h1>
           <form onSubmit={login}>
             <input
               type="password"
