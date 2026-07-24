@@ -301,17 +301,12 @@ export default function AdminApp() {
     return (
       <main className="admin-shell">
         <section className="admin-login">
-          <h1>Acceso administrador</h1>
-          <p>Ingresa la clave simple para ver reportes y exportar Excel.</p>
           <form onSubmit={login}>
-            <label>
-              Clave
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
             <button type="submit" disabled={busyLogin}>
               {busyLogin ? "Validando..." : "Entrar"}
             </button>
