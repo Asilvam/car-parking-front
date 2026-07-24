@@ -109,6 +109,14 @@ const shortDate = new Intl.DateTimeFormat("es-CL", {
   timeZone: "America/Santiago",
 });
 
+const longDate = new Intl.DateTimeFormat("es-CL", {
+  weekday: "long",
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+  timeZone: "America/Santiago",
+});
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -212,7 +220,7 @@ export function OperatorApp() {
           new Date(left.exitTime ?? left.entryTime).getTime(),
       );
       setActive(activeRecords);
-      setHistory(movements);
+      setHistory(movements.slice(0, 10));
       setSummary(today);
       setLocation(currentLocation);
       setParkingConfig(config);
@@ -394,11 +402,12 @@ export function OperatorApp() {
       <section className="dashboard-heading">
         <div>
           <p className="eyebrow">Caja de hoy</p>
-          <h2>Buenos días, operador.</h2>
+          <h2>{longDate.format(new Date(now))}</h2>
           <p>
+            Hora actual {clock.format(new Date(now))}
             {location
-              ? `${location.name}${location.address ? ` · ${location.address}` : ""}`
-              : "Registra entradas y cobra salidas sin perder tiempo."}
+              ? ` · ${location.name}${location.address ? ` · ${location.address}` : ""}`
+              : ""}
           </p>
         </div>
         <div className="rate-chip">
@@ -412,22 +421,22 @@ export function OperatorApp() {
         <article className="metric metric-highlight">
           <span>Recaudación</span>
           <strong>{money.format(summary.revenue)}</strong>
-          <small>{summary.completedVehicles} cobros completados</small>
+          <small>{summary.completedVehicles} cobros completados desde 08:00</small>
         </article>
         <article className="metric">
           <span>Vehículos dentro</span>
           <strong>{summary.activeVehicles}</strong>
-          <small>estacionamientos activos</small>
+          <small>ingresados desde 08:00</small>
         </article>
         <article className="metric">
           <span>Minutos cobrados</span>
           <strong>{summary.billedMinutes}</strong>
-          <small>acumulado de hoy</small>
+          <small>acumulado desde 08:00</small>
         </article>
         <article className="metric metric-evasion">
           <span>Evasiones</span>
           <strong>{money.format(summary.evadedAmount)}</strong>
-          <small>{summary.evadedVehicles} salidas sin pago</small>
+          <small>{summary.evadedVehicles} salidas sin pago desde 08:00</small>
         </article>
       </section>
 
@@ -559,9 +568,9 @@ export function OperatorApp() {
         <div className="panel-heading history-heading">
           <div>
             <p className="eyebrow">Actividad reciente</p>
-            <h3>Últimos movimientos</h3>
+            <h3>Últimos 10 movimientos</h3>
           </div>
-          <span className="history-count">{history.length} movimientos</span>
+          <span className="history-count">{history.length} de 10</span>
         </div>
         <div className="history-table-wrap">
           <table>

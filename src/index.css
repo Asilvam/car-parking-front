@@ -848,6 +848,15 @@ th {
     padding: 0 15px 40px;
   }
 
+  .workspace-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .entry-panel {
+    order: -1;
+  }
+
   .topbar {
     min-height: 76px;
   }
