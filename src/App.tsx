@@ -344,14 +344,12 @@ export function OperatorApp() {
         <article className="dash-chip">
           <span>Fecha</span>
           <strong>{chileDayMonth(now)}</strong>
-          <small>America/Santiago</small>
         </article>
         <article className="dash-chip">
           <span>Locación</span>
           <strong className="chip-location">
             {location?.name ?? "Control de estacionamiento"}
           </strong>
-          <small>{location?.address ?? "Ubicación principal"}</small>
         </article>
         <article className="dash-chip rate-chip">
           <span>Tarifa vigente</span>
