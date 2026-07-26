@@ -28,7 +28,7 @@
   max-width: 300px;
   height: 64px;
   display: grid;
-  grid-template-rows: 18px 46px;
+  grid-template-rows: 18px minmax(0, 1fr);
   border: 2px solid var(--ink);
   border-radius: 14px;
   overflow: hidden;
@@ -36,30 +36,38 @@
 }
 
 .is-admin-mode .active-heading-counter {
-  border-width: 2px;
+  height: 64px;
+  display: grid;
+  grid-template-rows: 18px minmax(0, 1fr);
+  border: 2px solid var(--ink);
   border-radius: 14px;
-  grid-template-rows: 18px 46px;
+  overflow: hidden;
+  background: #fff;
 }
 
 .is-admin-mode .active-heading-counter span,
-.is-admin-mode .active-heading-row .exit-search-label {
-  min-height: 18px;
-  padding: 2px 8px;
+.is-admin-mode .active-heading-row .active-heading-label {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 18px;
+  min-height: 0;
+  padding: 0 8px;
   margin: 0;
   background: var(--ink);
   color: #fff;
   text-align: center;
   font-size: 9px;
   font-weight: 800;
-  line-height: 14px;
+  line-height: 18px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .is-admin-mode .active-heading-counter strong,
 .is-admin-mode .active-heading-row .exit-search-input {
-  height: 46px;
-  min-height: 46px;
+  height: 100%;
+  min-height: 0;
   padding: 0 10px;
   border: 0;
   border-radius: 0;
@@ -68,10 +76,15 @@
   font-family: "Arial Narrow", Impact, ui-sans-serif, sans-serif;
   font-size: 26px;
   font-weight: 900;
-  line-height: 46px;
+  line-height: normal;
   letter-spacing: 0.04em;
   text-align: center;
   box-shadow: none;
+}
+
+.is-admin-mode .active-heading-counter strong {
+  display: grid;
+  place-items: center;
 }
 
 .is-admin-mode .active-heading-row .exit-search-panel:focus-within {
@@ -153,5 +166,139 @@
 @media (min-width: 981px) {
   .is-admin-mode .workspace-grid {
     grid-template-columns: 360px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .is-admin-mode .active-heading-title {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .is-admin-mode .active-heading-top {
+    display: block;
+  }
+
+  .is-admin-mode .active-heading-row {
+    width: 90%;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .is-admin-mode .active-heading-row .exit-search-panel {
+    max-width: none;
+  }
+
+  .is-admin-mode .vehicle-card {
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .is-admin-mode .vehicle-inline-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "plate entry actions"
+      "plate time actions"
+      "plate estimate actions";
+    column-gap: 8px;
+    row-gap: 0;
+    align-items: stretch;
+    min-height: 54px;
+  }
+
+  .is-admin-mode .plate-badge {
+    grid-area: plate;
+    align-self: stretch;
+    justify-self: start;
+    width: auto;
+    min-height: 44px;
+    display: grid;
+    align-items: center;
+    padding: 8px 12px;
+    font-size: 20px;
+  }
+
+  .is-admin-mode .vehicle-cell-entry {
+    grid-area: entry;
+    align-self: center;
+    justify-self: stretch;
+  }
+
+  .is-admin-mode .vehicle-cell-time {
+    grid-area: time;
+    align-self: center;
+    justify-self: stretch;
+  }
+
+  .is-admin-mode .vehicle-cell-estimate {
+    grid-area: estimate;
+    align-self: center;
+    justify-self: stretch;
+  }
+
+  .is-admin-mode .vehicle-time,
+  .is-admin-mode .vehicle-estimate {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    width: 100%;
+    text-align: left;
+    line-height: 1.05;
+  }
+
+  .is-admin-mode .vehicle-time span,
+  .is-admin-mode .vehicle-estimate span {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .is-admin-mode .vehicle-time strong,
+  .is-admin-mode .vehicle-estimate strong {
+    justify-self: end;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .is-admin-mode .vehicle-time strong {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .is-admin-mode .vehicle-estimate strong {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .is-admin-mode .vehicle-actions {
+    grid-area: actions;
+    align-self: stretch;
+    justify-self: end;
+    width: 118px;
+    height: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .is-admin-mode .vehicle-actions .charge-button,
+  .is-admin-mode .vehicle-actions .evasion-button {
+    height: 100%;
+    min-height: 0;
+    padding: 4px 8px;
+    line-height: 1.05;
   }
 }
