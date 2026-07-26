@@ -1,0 +1,287 @@
+@media (min-width: 681px) {
+  .is-operator-mode .active-heading-row {
+    align-items: stretch;
+  }
+
+  .is-operator-mode .active-heading-row .exit-search-panel {
+    width: 100%;
+    max-width: 300px;
+    height: 64px;
+    display: grid;
+    grid-template-rows: 18px minmax(0, 1fr);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .is-operator-mode .active-heading-counter {
+    height: 64px;
+    border-width: 2px;
+    border-radius: 14px;
+    grid-template-rows: 18px minmax(0, 1fr);
+  }
+
+  .is-operator-mode .active-heading-counter span,
+  .is-operator-mode .active-heading-row .active-heading-label {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 18px;
+    min-height: 0;
+    padding: 0 8px;
+    margin: 0;
+    background: var(--ink);
+    color: #fff;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 18px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .is-operator-mode .active-heading-counter strong,
+  .is-operator-mode .active-heading-row .exit-search-input {
+    height: 100%;
+    min-height: 0;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    color: var(--ink);
+    font-family: "Arial Narrow", Impact, ui-sans-serif, sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: normal;
+    letter-spacing: 0.04em;
+    text-align: center;
+    box-shadow: none;
+  }
+
+  .is-operator-mode .active-heading-counter strong {
+    display: grid;
+    place-items: center;
+  }
+
+  .is-operator-mode .active-heading-row .exit-search-panel:focus-within {
+    border-color: var(--forest);
+    box-shadow: 0 0 0 4px rgba(23, 60, 45, 0.2);
+  }
+
+  .is-operator-mode .vehicle-inline-head,
+  .is-operator-mode .vehicle-inline-row {
+    grid-template-columns:
+      128px minmax(92px, 1fr) minmax(104px, 1fr)
+      minmax(112px, 1fr) 280px;
+    column-gap: 14px;
+  }
+
+  .is-operator-mode .vehicle-inline-head span:nth-child(2),
+  .is-operator-mode .vehicle-cell-entry,
+  .is-operator-mode .vehicle-cell-entry strong {
+    width: 100%;
+    justify-self: stretch;
+    text-align: center;
+  }
+
+  .is-operator-mode .vehicle-inline-head span:nth-child(3),
+  .is-operator-mode .vehicle-inline-head span:nth-child(4),
+  .is-operator-mode .vehicle-cell-time,
+  .is-operator-mode .vehicle-cell-estimate,
+  .is-operator-mode .vehicle-cell-time strong,
+  .is-operator-mode .vehicle-cell-estimate strong {
+    width: 100%;
+    justify-self: stretch;
+    text-align: right;
+  }
+
+  .is-operator-mode .vehicle-inline-head span:nth-child(5),
+  .is-operator-mode .vehicle-actions {
+    padding-left: 10px;
+  }
+
+  .is-operator-mode .vehicle-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .is-operator-mode .vehicle-actions .charge-button,
+  .is-operator-mode .vehicle-actions .evasion-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 11px;
+    line-height: 1.05;
+  }
+}
+
+@media (max-width: 680px) {
+  .is-operator-mode .topbar-status {
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .is-operator-mode .topbar-status-desktop {
+    display: none;
+  }
+
+  .is-operator-mode .topbar-status-mobile {
+    display: inline;
+  }
+
+  .is-operator-mode .dashboard-heading {
+    margin-bottom: 2px;
+    padding: 14px 0 8px;
+  }
+
+  .is-operator-mode .rate-chip {
+    grid-template-columns: 1fr auto auto 1fr;
+    column-gap: 3px;
+  }
+
+  .is-operator-mode .rate-chip > span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .is-operator-mode .rate-chip strong {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: baseline;
+    justify-self: end;
+    text-align: center;
+  }
+
+  .is-operator-mode .rate-chip small {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: baseline;
+    justify-self: start;
+    font-size: 0;
+    text-align: center;
+  }
+
+  .is-operator-mode .rate-chip small::after {
+    content: "/min";
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .is-operator-mode .mobile-workspace-tabs {
+    margin: 2px 0 8px;
+  }
+
+  .is-operator-mode .entry-panel .primary-button {
+    margin-top: 10px;
+  }
+
+  .is-operator-mode .entry-panel .plate-input:focus {
+    border-width: 3px;
+    border-color: var(--forest);
+    box-shadow: 0 0 0 4px rgba(23, 60, 45, 0.24);
+  }
+
+  .is-operator-mode .active-heading-title {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .is-operator-mode .active-heading-top {
+    display: block;
+  }
+
+  .is-operator-mode .active-heading-row {
+    width: 90%;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  .is-operator-mode .active-heading-row .exit-search-panel,
+  .is-operator-mode .active-heading-counter {
+    height: 64px;
+    display: grid;
+    grid-template-rows: 18px minmax(0, 1fr);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .is-operator-mode .active-heading-row .exit-search-panel {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .is-operator-mode .active-heading-counter {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .is-operator-mode .active-heading-label {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 18px;
+    min-height: 0;
+    margin: 0;
+    padding: 0 8px;
+    background: var(--ink);
+    color: #fff;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 18px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .is-operator-mode .active-heading-row .exit-search-input,
+  .is-operator-mode .active-heading-counter strong {
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+    color: var(--ink);
+    font-family: "Arial Narrow", Impact, ui-sans-serif, sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: normal;
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+
+  .is-operator-mode .active-heading-counter strong {
+    display: grid;
+    place-items: center;
+  }
+
+  .is-operator-mode .vehicle-actions {
+    width: 118px;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .is-operator-mode .vehicle-actions .charge-button,
+  .is-operator-mode .vehicle-actions .evasion-button {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    padding: 4px 8px;
+    line-height: 1.05;
+  }
+}

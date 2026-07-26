@@ -1,0 +1,157 @@
+.is-admin-mode .entry-panel .panel-heading {
+  min-height: 30px;
+}
+
+.is-admin-mode .entry-panel form {
+  margin-top: 6px;
+}
+
+.is-admin-mode .entry-panel .primary-button {
+  margin-top: 8px;
+}
+
+.is-admin-mode .entry-panel .plate-input::placeholder {
+  color: #b9beb7;
+}
+
+.is-admin-mode .active-panel {
+  overflow: hidden;
+}
+
+.is-admin-mode .active-heading-row {
+  gap: 14px;
+  align-items: stretch;
+}
+
+.is-admin-mode .active-heading-row .exit-search-panel {
+  width: 100%;
+  max-width: 300px;
+  height: 64px;
+  display: grid;
+  grid-template-rows: 18px 46px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.is-admin-mode .active-heading-counter {
+  border-width: 2px;
+  border-radius: 14px;
+  grid-template-rows: 18px 46px;
+}
+
+.is-admin-mode .active-heading-counter span,
+.is-admin-mode .active-heading-row .exit-search-label {
+  min-height: 18px;
+  padding: 2px 8px;
+  margin: 0;
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.is-admin-mode .active-heading-counter strong,
+.is-admin-mode .active-heading-row .exit-search-input {
+  height: 46px;
+  min-height: 46px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: var(--ink);
+  font-family: "Arial Narrow", Impact, ui-sans-serif, sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 46px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  box-shadow: none;
+}
+
+.is-admin-mode .active-heading-row .exit-search-panel:focus-within {
+  border-color: var(--forest);
+  box-shadow: 0 0 0 4px rgba(23, 60, 45, 0.2);
+}
+
+.is-admin-mode .vehicle-inline-head,
+.is-admin-mode .vehicle-inline-row {
+  grid-template-columns: 108px 68px 78px 88px minmax(164px, 1fr);
+  gap: 8px;
+}
+
+.is-admin-mode .vehicle-inline-head {
+  padding: 7px 10px;
+}
+
+.is-admin-mode .vehicle-inline-head span:nth-child(2) {
+  width: 100%;
+  justify-self: center;
+  text-align: center;
+}
+
+.is-admin-mode .vehicle-cell-entry {
+  width: 100%;
+  justify-self: stretch;
+  text-align: center;
+}
+
+.is-admin-mode .vehicle-cell-entry strong {
+  width: 100%;
+  text-align: center;
+}
+
+.is-admin-mode .vehicle-inline-head span:nth-child(3),
+.is-admin-mode .vehicle-inline-head span:nth-child(4) {
+  width: 100%;
+  justify-self: end;
+  text-align: right;
+}
+
+.is-admin-mode .vehicle-cell-time,
+.is-admin-mode .vehicle-cell-estimate {
+  width: 100%;
+  justify-self: stretch;
+  text-align: right;
+}
+
+.is-admin-mode .vehicle-cell-time strong,
+.is-admin-mode .vehicle-cell-estimate strong {
+  width: 100%;
+  text-align: right;
+}
+
+.is-admin-mode .vehicle-card {
+  padding: 10px;
+}
+
+.is-admin-mode .vehicle-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  justify-self: start;
+}
+
+.is-admin-mode .charge-button,
+.is-admin-mode .evasion-button {
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.05;
+}
+
+@media (min-width: 981px) {
+  .is-admin-mode .workspace-grid {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+}

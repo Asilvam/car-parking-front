@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Toast, { useToast } from "../components/Toast";
 import PresetFields from "../components/admin/PresetFields";
 import {
   adminApi,
@@ -20,7 +21,7 @@ export default function AdminReportsPage() {
   const [token, setToken] = useState<string | null>(() => getAdminToken());
   const [password, setPassword] = useState("");
   const [busyLogin, setBusyLogin] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { toast, showToast, dismissToast } = useToast();
 
   const [preset, setPreset] = useState<Preset>("day");
   const [date, setDate] = useState(todayIso);
@@ -50,7 +51,7 @@ export default function AdminReportsPage() {
     if (!token) return;
 
     setLoading(true);
-    setNotice(null);
+    dismissToast();
 
     try {
       const data = await adminApi<SummaryResponse>(
@@ -64,11 +65,11 @@ export default function AdminReportsPage() {
         clearAdminToken();
         setToken(null);
       }
-      setNotice(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [token, queryString]);
+  }, [token, queryString, dismissToast, showToast]);
 
   useEffect(() => {
     void loadSummary();
@@ -77,7 +78,7 @@ export default function AdminReportsPage() {
   const login = async (event: FormEvent) => {
     event.preventDefault();
     setBusyLogin(true);
-    setNotice(null);
+    dismissToast();
 
     try {
       const response = await fetch(`${API_URL}/admin/auth/login`, {
@@ -97,7 +98,7 @@ export default function AdminReportsPage() {
       setToken(body.token);
       setPassword("");
     } catch (error) {
-      setNotice((error as Error).message);
+      showToast((error as Error).message, "error");
     } finally {
       setBusyLogin(false);
     }
@@ -113,13 +114,13 @@ export default function AdminReportsPage() {
     clearAdminToken();
     setToken(null);
     setSummary(null);
-    setNotice(null);
+    dismissToast();
   };
 
   const exportExcel = async () => {
     if (!token) return;
 
-    setNotice(null);
+    dismissToast();
     try {
       const response = await fetch(
         `${API_URL}/admin/reports/parking.xlsx?${queryString}`,
@@ -145,14 +146,17 @@ export default function AdminReportsPage() {
         .slice(0, 16)}.xlsx`;
       link.click();
       window.URL.revokeObjectURL(url);
+      showToast("Reporte exportado correctamente.", "success");
     } catch (error) {
-      setNotice((error as Error).message);
+      showToast((error as Error).message, "error");
     }
   };
 
   if (!token) {
     return (
       <main className="admin-shell">
+        <Toast toast={toast} onClose={dismissToast} />
+
         <header className="topbar admin-topbar">
           <a className="brand-lockup brand-admin-link" href="/admin">
             <span className="brand-mark" aria-hidden="true">
@@ -180,7 +184,6 @@ export default function AdminReportsPage() {
               {busyLogin ? "Validando..." : "Entrar"}
             </button>
           </form>
-          {notice && <div className="admin-notice">{notice}</div>}
         </section>
       </main>
     );
@@ -188,6 +191,8 @@ export default function AdminReportsPage() {
 
   return (
     <main className="admin-shell">
+      <Toast toast={toast} onClose={dismissToast} />
+
       <header className="topbar admin-topbar">
         <a className="brand-lockup brand-admin-link" href="/admin">
           <span className="brand-mark" aria-hidden="true">
@@ -285,8 +290,6 @@ export default function AdminReportsPage() {
           </button>
         </div>
       </section>
-
-      {notice && <div className="admin-notice">{notice}</div>}
 
       {summary && (
         <>

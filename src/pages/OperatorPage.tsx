@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Toast, { useToast } from "../components/Toast";
 import { api } from "../lib/api";
 import {
   evasionReasonCodes,
@@ -87,18 +88,11 @@ export default function OperatorPage({
     useState<EvasionReasonCode>("left-without-payment");
   const [evasionObservation, setEvasionObservation] = useState("");
   const [busy, setBusy] = useState<"entry" | "exit" | "evasion" | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [mobileTab, setMobileTab] = useState<"entry" | "active">("entry");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timeoutId = window.setTimeout(() => setToastMessage(null), 2500);
-    return () => window.clearTimeout(timeoutId);
-  }, [toastMessage]);
+  const { toast, showToast, dismissToast } = useToast();
 
   useEffect(() => {
     if (mobileTab !== "active") return;
@@ -179,29 +173,33 @@ export default function OperatorPage({
   const registerEntry = async (event: FormEvent) => {
     event.preventDefault();
     if (!isEntryAllowedByTime) {
-      setNotice(`Fuera de horario de ingreso (${operatingHoursLabel}).`);
+      showToast(
+        `Fuera de horario de ingreso (${operatingHoursLabel}).`,
+        "warning",
+      );
       return;
     }
 
     if (!VEHICLE_FULL_PATTERN.test(vehicleNumber)) {
-      setNotice(
+      showToast(
         "Patente invalida. Formato: 6 caracteres (2 consonantes, 2 del medio iguales entre si: letras o numeros, y 2 numeros).",
+        "warning",
       );
       return;
     }
 
     setBusy("entry");
-    setNotice(null);
+    dismissToast();
     try {
       const record = await api<ParkingRecord>("/parking/entry", {
         method: "POST",
         body: JSON.stringify({ vehicleNumber }),
       });
       setVehicleNumber("");
-      setToastMessage(`Entrada registrada: ${record.vehicleNumber}`);
+      showToast(`Entrada registrada: ${record.vehicleNumber}`, "success");
       await loadData();
     } catch (error) {
-      setNotice((error as Error).message);
+      showToast((error as Error).message, "error");
     } finally {
       setBusy(null);
     }
@@ -210,7 +208,7 @@ export default function OperatorPage({
   const registerExit = async () => {
     if (!selected) return;
     setBusy("exit");
-    setNotice(null);
+    dismissToast();
     try {
       const completed = await api<ParkingRecord>("/parking/exit", {
         method: "POST",
@@ -226,7 +224,7 @@ export default function OperatorPage({
       setReceiptDiscountApplied(applyPurchaseDiscount);
       await loadData();
     } catch (error) {
-      setNotice((error as Error).message);
+      showToast((error as Error).message, "error");
     } finally {
       setBusy(null);
     }
@@ -235,7 +233,7 @@ export default function OperatorPage({
   const registerEvasion = async () => {
     if (!selected) return;
     setBusy("evasion");
-    setNotice(null);
+    dismissToast();
     try {
       const completed = await api<ParkingRecord>("/parking/evasion", {
         method: "POST",
@@ -252,7 +250,7 @@ export default function OperatorPage({
       setEvasionObservation("");
       await loadData();
     } catch (error) {
-      setNotice((error as Error).message);
+      showToast((error as Error).message, "error");
     } finally {
       setBusy(null);
     }
@@ -313,6 +311,8 @@ export default function OperatorPage({
 
   return (
     <main className={`app-shell ${isAdminMode ? "is-admin-mode" : "is-operator-mode"}`}>
+      <Toast toast={toast} onClose={dismissToast} />
+
       <header className="topbar">
         <a
           className="brand-lockup brand-admin-link"
@@ -340,7 +340,12 @@ export default function OperatorPage({
           )}
           <div className="topbar-status">
             <span className={`status-dot ${connected ? "is-online" : ""}`} />
-            {connected ? "Sistema conectado" : "Backend sin conexion"}
+            <span className="topbar-status-desktop">
+              {connected ? "Sistema conectado" : "Backend sin conexion"}
+            </span>
+            <span className="topbar-status-mobile">
+              {connected ? "En línea" : "Sin conexión"}
+            </span>
           </div>
         </div>
       </header>
@@ -394,21 +399,6 @@ export default function OperatorPage({
           </article>
         )}
       </section>
-
-      {notice && (
-        <div className="notice" role="status">
-          <span>{notice}</span>
-          <button type="button" onClick={() => setNotice(null)}>
-            Cerrar
-          </button>
-        </div>
-      )}
-
-      {toastMessage && (
-        <div className="floating-toast" role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      )}
 
       <section className="workspace-grid">
         <nav className="mobile-workspace-tabs" aria-label="Navegacion operativa">
@@ -483,19 +473,13 @@ export default function OperatorPage({
             <div className="active-heading-title">
               <div className="active-heading-top">
                 <p className="eyebrow">En estacionamiento</p>
-                <div className="active-heading-counter" aria-label="Vehiculos en estacionamiento">
-                  <span>Vehiculos</span>
-                  <strong>{active.length}</strong>
-                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="active-body">
-            <div className="active-search-column">
               <div className="active-heading-row">
                 <div className="exit-search-panel">
-                  <label htmlFor="exit-search" className="exit-search-label">
+                  <label
+                    htmlFor="exit-search"
+                    className="active-heading-label"
+                  >
                     Busca patente
                   </label>
                   <input
@@ -523,9 +507,15 @@ export default function OperatorPage({
                     spellCheck={false}
                   />
                 </div>
+                <div className="active-heading-counter" aria-label="Vehiculos en estacionamiento">
+                  <span className="active-heading-label">Vehiculos</span>
+                  <strong>{active.length}</strong>
+                </div>
               </div>
             </div>
+          </div>
 
+          <div className="active-body">
             <div className="active-list-column">
               <div className="vehicle-list">
                 <div className="vehicle-inline-head" aria-hidden="true">
@@ -567,15 +557,23 @@ export default function OperatorPage({
                               className="charge-button"
                               type="button"
                               onClick={() => openCharge(record)}
+                              aria-label={`Cobrar salida de ${record.vehicleNumber}`}
                             >
-                              Cobrar salida
+                              <span className="action-button-label">
+                                <span>Cobrar</span>
+                                <span>salida</span>
+                              </span>
                             </button>
                             <button
                               className="evasion-button"
                               type="button"
                               onClick={() => openEvasion(record)}
+                              aria-label={`Marcar evasión de ${record.vehicleNumber}`}
                             >
-                              Marcar evasion
+                              <span className="action-button-label">
+                                <span>Marcar</span>
+                                <span>evasión</span>
+                              </span>
                             </button>
                           </div>
                         </div>
