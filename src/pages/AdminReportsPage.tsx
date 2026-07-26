@@ -319,6 +319,7 @@ export default function AdminReportsPage() {
                   <th>Salida</th>
                   <th>Min</th>
                   <th>Pago</th>
+                  <th>Boleta/Desc.</th>
                   <th>Total</th>
                   <th>Deuda</th>
                 </tr>
@@ -326,7 +327,7 @@ export default function AdminReportsPage() {
               <tbody>
                 {summary.recent.length === 0 ? (
                   <tr>
-                    <td colSpan={8}>Sin movimientos para el filtro seleccionado.</td>
+                    <td colSpan={9}>Sin movimientos para el filtro seleccionado.</td>
                   </tr>
                 ) : (
                   summary.recent.map((row) => (
@@ -339,6 +340,15 @@ export default function AdminReportsPage() {
                       </td>
                       <td>{row.totalMinutes}</td>
                       <td>{row.paymentMethod ?? "-"}</td>
+                      <td>
+                        {row.status === "completed"
+                          ? row.purchaseDiscountApplied === true
+                            ? "Si"
+                            : row.purchaseDiscountApplied === false
+                              ? "No"
+                              : "-"
+                          : "-"}
+                      </td>
                       <td>{money.format(row.amountPaid)}</td>
                       <td>{money.format(row.outstandingAmount)}</td>
                     </tr>

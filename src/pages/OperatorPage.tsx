@@ -79,6 +79,7 @@ export default function OperatorPage({
   const [selected, setSelected] = useState<ParkingRecord | null>(null);
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
   const [receiptDiscountApplied, setReceiptDiscountApplied] = useState(false);
+  const [chargeQuoteAt, setChargeQuoteAt] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [applyPurchaseDiscount, setApplyPurchaseDiscount] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>("charge");
@@ -217,6 +218,7 @@ export default function OperatorPage({
           vehicleNumber: selected.vehicleNumber,
           paymentMethod,
           applyPurchaseDiscount,
+          quotedExitTime: new Date(chargeQuoteAt ?? Date.now()).toISOString(),
         }),
       });
       setSelected(null);
@@ -231,7 +233,7 @@ export default function OperatorPage({
   };
 
   const registerEvasion = async () => {
-    if (!selected || !isAdminMode) return;
+    if (!selected) return;
     setBusy("evasion");
     setNotice(null);
     try {
@@ -262,6 +264,7 @@ export default function OperatorPage({
     setDialogMode("charge");
     setReceipt(null);
     setReceiptDiscountApplied(false);
+    setChargeQuoteAt(Date.now());
     setSelected(record);
   };
 
@@ -278,17 +281,20 @@ export default function OperatorPage({
     setSelected(null);
     setReceipt(null);
     setReceiptDiscountApplied(false);
+    setChargeQuoteAt(null);
     setDialogMode("charge");
     setApplyPurchaseDiscount(false);
     setEvasionReasonCode("left-without-payment");
     setEvasionObservation("");
   };
 
-  const estimatedMinutes = selected ? elapsedMinutes(selected.entryTime, now) : 0;
+  const quoteClock = chargeQuoteAt ?? now;
+  const estimatedMinutes = selected ? elapsedMinutes(selected.entryTime, quoteClock) : 0;
   const baseEstimatedTotal = selected
     ? estimatedMinutes * (selected.ratePerMinute || summary.ratePerMinute)
     : 0;
-  const discountMinutes = applyPurchaseDiscount ? 15 : 0;
+  const purchaseDiscountMinutes = Math.max(0, parkingConfig?.purchaseDiscountMinutes ?? 15);
+  const discountMinutes = applyPurchaseDiscount ? purchaseDiscountMinutes : 0;
   const estimatedTotal = selected
     ? Math.max(estimatedMinutes - discountMinutes, 0) *
       (selected.ratePerMinute || summary.ratePerMinute)
@@ -447,7 +453,6 @@ export default function OperatorPage({
               autoComplete="off"
               autoFocus
             />
-            <p className="field-help">La hora de entrada se asignara automaticamente.</p>
             {!isEntryAllowedByTime && (
               <p className="field-help field-help-warning">
                 Ingresos habilitados entre {operatingHoursLabel}. Fuera de ese horario solo se
@@ -455,11 +460,16 @@ export default function OperatorPage({
               </p>
             )}
             <button
-              className="primary-button"
+              className={`primary-button ${!isEntryAllowedByTime ? "is-blocked" : ""}`.trim()}
               type="submit"
               disabled={busy === "entry" || !isEntryAllowedByTime}
+              aria-disabled={busy === "entry" || !isEntryAllowedByTime}
             >
-              {busy === "entry" ? "Registrando..." : "Registrar entrada"}
+              {busy === "entry"
+                ? "Registrando..."
+                : !isEntryAllowedByTime
+                  ? "Ingresos cerrados"
+                  : "Registrar ingreso"}
             </button>
           </form>
         </article>
@@ -560,15 +570,13 @@ export default function OperatorPage({
                             >
                               Cobrar salida
                             </button>
-                            {isAdminMode && (
-                              <button
-                                className="evasion-button"
-                                type="button"
-                                onClick={() => openEvasion(record)}
-                              >
-                                Marcar evasion
-                              </button>
-                            )}
+                            <button
+                              className="evasion-button"
+                              type="button"
+                              onClick={() => openEvasion(record)}
+                            >
+                              Marcar evasion
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -600,13 +608,14 @@ export default function OperatorPage({
                 <th>Salida</th>
                 <th>Duracion</th>
                 <th>Pago</th>
+                {isAdminMode && <th>Boleta/Desc.</th>}
                 <th className="align-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {history.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="table-empty">
+                  <td colSpan={isAdminMode ? 7 : 6} className="table-empty">
                     Aun no hay movimientos registrados.
                   </td>
                 </tr>
@@ -628,6 +637,17 @@ export default function OperatorPage({
                           ? paymentLabels[record.paymentMethod]
                           : "-"}
                     </td>
+                    {isAdminMode && (
+                      <td>
+                        {record.status === "completed"
+                          ? record.purchaseDiscountApplied === true
+                            ? `Si (${record.discountMinutesApplied ?? purchaseDiscountMinutes} min)`
+                            : record.purchaseDiscountApplied === false
+                              ? "No"
+                              : "-"
+                          : "-"}
+                      </td>
+                    )}
                     <td className="align-right table-total">{money.format(movementTotal(record))}</td>
                   </tr>
                 ))
@@ -693,7 +713,7 @@ export default function OperatorPage({
                   </div>
                 </div>
                 <div className={`charge-total ${dialogMode === "evasion" ? "is-evasion" : ""}`}>
-                  <span>{dialogMode === "evasion" ? "Deuda estimada" : "Total estimado"}</span>
+                  <span>{dialogMode === "evasion" ? "Deuda estimada" : "Total a cobrar"}</span>
                   <strong>{money.format(estimatedTotal)}</strong>
                 </div>
                 {dialogMode === "charge" ? (
@@ -780,7 +800,7 @@ export default function OperatorPage({
                   {dialogMode === "evasion"
                     ? "La deuda final se calcula al registrar la evasion."
                     : applyPurchaseDiscount
-                      ? `Descuento aplicado sobre ${money.format(baseEstimatedTotal)}.`
+                      ? `Descuento de ${discountMinutes} min aplicado sobre ${money.format(baseEstimatedTotal)}.`
                       : "El total final se calcula al confirmar la salida."}
                 </p>
               </>

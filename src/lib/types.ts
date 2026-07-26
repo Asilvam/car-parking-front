@@ -25,6 +25,9 @@ export type ParkingRecord = {
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
   outstandingAmount?: number;
+  purchaseDiscountApplied?: boolean;
+  discountMinutesApplied?: number;
+  minutesCharged?: number;
   evasionReasonCode?: EvasionReasonCode;
   evasionObservation?: string;
 };
@@ -47,6 +50,7 @@ export type ParkingConfig = {
   openTime?: string;
   closeTime?: string;
   autoEvasionTime?: string;
+  purchaseDiscountMinutes?: number;
 };
 
 export type Summary = {
@@ -108,5 +112,8 @@ export type SummaryResponse = {
     amountPaid: number;
     outstandingAmount: number;
     paymentMethod?: PaymentMethod;
+    purchaseDiscountApplied?: boolean;
+    discountMinutesApplied?: number;
+    minutesCharged?: number;
   }>;
 };
