@@ -193,6 +193,11 @@
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
+.app-shell .active-heading-row .exit-search-input:focus,
+.app-shell .active-heading-row .exit-search-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 .app-shell .vehicle-actions {
   padding: 0;
   min-width: 0;
