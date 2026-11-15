@@ -29,22 +29,21 @@ renderizado del lado del servidor.
 ## Operación de cobro y compras
 
 1. Registrar el ingreso guarda la hora y la tarifa de esa estadía.
-2. Abrir **Cobrar** congela la hora de cotización usando el reloj del dispositivo. El importe no sigue aumentando mientras ese panel permanece abierto.
-3. Si corresponde una compra, marcar **Descuento por compras** descuenta 15 minutos (o el valor de `purchaseDiscountMinutes` informado por la API).
-4. Confirmar envía la hora cotizada, el beneficio y el medio de pago. El backend calcula y guarda el resultado; el comprobante muestra su respuesta.
-5. Si los minutos descontados cubren toda la duración, el importe final es **$0** y confirmar cierra la estadía normalmente, sin deuda ni evasión. No se cierra automáticamente al marcar la casilla ni al transcurrir los primeros 15 minutos.
+2. Abrir **Cobrar** solicita una cotización firmada al servidor mediante `POST /parking/quote`. La hora, tarifa y minutos quedan fijados durante **5 minutos**.
+3. **Descuento por compras** descuenta 15 minutos (o `purchaseDiscountMinutes` de la cotización).
+4. Confirmar envía `quoteToken`, el beneficio y, si hay un importe positivo, el medio de pago. El backend valida la firma, la estadía y el vencimiento.
+5. Cuando el beneficio cubre la estadía, se oculta el medio de pago y **Cerrar salida sin cobro** termina la operación en $0, sin deuda. El comprobante indica **Salida cubierta por compras**.
+6. Al vencer la cotización se bloquea la confirmación. **Actualizar cotización** obtiene el importe vigente y exige una nueva confirmación; puede pasar de $0 a un importe positivo.
 
-Con una tarifa de $30/min: 12 o 15 minutos con compras cierran en $0; 15 minutos y 1 milisegundo se redondean a 16 minutos y dejan $30 por pagar; 20 minutos dejan $150. Sin compras, 15 minutos cuestan $450.
+Con $30/min y compras: 12 o 15 minutos cotizados cierran en $0; 15 minutos y 1 milisegundo se redondean a 16 y dejan $30; 20 minutos dejan $150. El precio cotizado se conserva durante su vigencia aunque transcurra otro minuto.
 
-### Limitaciones actuales y propuestas
+Los informes y Excel distinguen estadías finalizadas, cobros positivos y salidas cubiertas por compras. Los minutos cobrados excluyen el descuento; los minutos calculados conservan la duración hasta la cotización. También se reconocen cierres históricos en $0 registrados como pagados.
 
-- La cotización no tiene vencimiento y depende del reloj del dispositivo. Abrir a los 14 minutos y confirmar a los 20 puede mantener el importe en $0. Propuesta: cotización creada por el servidor, con vigencia y nueva confirmación si cambia el valor.
-- Un total en $0 todavía muestra medio de pago, **Confirmar cobro y salida** y **Pago registrado**. Propuesta: ocultar el medio de pago y usar **Cerrar salida sin cobro** y **Salida cubierta por compras**, conservando confirmación explícita.
-- La compra se acredita manualmente mediante la casilla. Falta definir comprobante/referencia y autorización del beneficio.
-- Los cierres en $0 se cuentan como cobros completados. **Minutos cobrados** incluye hoy minutos descontados; debe usar los minutos efectivamente cobrados y distinguir cierres gratuitos de pagos positivos.
-- El bloqueo de doble envío del frontend no sustituye un cierre atómico e idempotente en el backend para varios operadores.
+### Integración y pendientes
 
-Estas son propuestas documentadas; no se ha cambiado el contrato de cobro ni se ha implementado la caducidad de cotizaciones. La tarifa administrable y varias ubicaciones están en [su plan separado](docs/plan-multiubicacion.md).
+Este cambio requiere desplegar frontend y backend juntos: `/parking/exit` exige `quoteToken` y ya no acepta una hora enviada por el dispositivo como cotización. El backend permite configurar `PARKING_QUOTE_SECRET`; todas sus instancias deben compartir el mismo secreto.
+
+Queda pendiente acreditar la compra con comprobante/autorización, implementar cierre atómico e idempotente entre operadores y definir un control de salida física. La tarifa administrable y varias ubicaciones siguen en [su plan separado](docs/plan-multiubicacion.md).
 
 ## Vistas
 
@@ -140,3 +139,7 @@ El informe de la revisión local y sus límites están en [docs/validacion-visua
 npm test
 npm run build
 ```
+
+## Verificación del ajuste de cobro (15-11-2026)
+
+77 pruebas aprobadas: 9 de frontend, 53 unitarias de backend y 15 HTTP con persistencia aislada. Compilación de ambos proyectos aprobada. Se cubren el límite exacto de vencimiento de cinco minutos, firma y asociación de la cotización, renovación de un importe gratuito a uno positivo, cierres en $0 y métricas netas. La revisión visual utilizó datos simulados; no se conectó a MongoDB ni se registraron pagos reales.

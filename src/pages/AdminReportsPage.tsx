@@ -1,3 +1,4 @@
+import { isNoPaymentRequired } from "../lib/parking-payment";
 import SelectField from "../components/ui/SelectField";
 import {
   Download,
@@ -431,8 +432,8 @@ export default function AdminReportsPage() {
                   <strong>{summary.totals.movements}</strong>
                 </article>
                 <article>
-                  <span>Vehículos dentro</span>
-                  <strong>{summary.totals.active}</strong>
+                  <span>Cobros positivos</span>
+                  <strong>{summary.totals.paid}</strong>
                 </article>
                 <article>
                   <span>Recaudación</span>
@@ -450,6 +451,14 @@ export default function AdminReportsPage() {
                   <span>Deuda por evasiones</span>
                   <strong>{money.format(summary.totals.debt)}</strong>
                 </article>
+                <article>
+                  <span>Salidas cubiertas por compras</span>
+                  <strong>{summary.totals.free}</strong>
+                </article>
+                <article>
+                  <span>Minutos efectivamente cobrados</span>
+                  <strong>{summary.totals.billedMinutes}</strong>
+                </article>
               </section>
               <div className="admin-table-wrap">
                 <table className="admin-table">
@@ -460,7 +469,8 @@ export default function AdminReportsPage() {
                         "Estado",
                         "Entrada",
                         "Salida",
-                        "Minutos",
+                        "Minutos calculados",
+                        "Minutos cobrados",
                         "Pago",
                         "Descuento",
                         "Total cobrado",
@@ -473,7 +483,7 @@ export default function AdminReportsPage() {
                   <tbody>
                     {summary.recent.length === 0 ? (
                       <tr>
-                        <td colSpan={9}>
+                        <td colSpan={10}>
                           Sin movimientos para los filtros aplicados.
                         </td>
                       </tr>
@@ -485,7 +495,11 @@ export default function AdminReportsPage() {
                               {row.vehicleNumber}
                             </span>
                           </td>
-                          <td>{statusLabels[row.status]}</td>
+                          <td>
+                            {isNoPaymentRequired(row)
+                              ? "Cubierto por compras"
+                              : statusLabels[row.status]}
+                          </td>
                           <td>{dateTime.format(new Date(row.entryTime))}</td>
                           <td>
                             {row.exitTime
@@ -494,9 +508,16 @@ export default function AdminReportsPage() {
                           </td>
                           <td>{row.totalMinutes}</td>
                           <td>
-                            {row.paymentMethod
-                              ? paymentLabels[row.paymentMethod]
+                            {row.status === "completed"
+                              ? (row.minutesCharged ?? "—")
                               : "—"}
+                          </td>
+                          <td>
+                            {isNoPaymentRequired(row)
+                              ? "No requerido"
+                              : row.paymentMethod
+                                ? paymentLabels[row.paymentMethod]
+                                : "—"}
                           </td>
                           <td>{discountLabel(row)}</td>
                           <td>{money.format(row.amountPaid)}</td>
@@ -522,7 +543,9 @@ export default function AdminReportsPage() {
                         <span
                           className={`movement-status movement-status--${row.status}`}
                         >
-                          {statusLabels[row.status]}
+                          {isNoPaymentRequired(row)
+                            ? "Cubierto por compras"
+                            : statusLabels[row.status]}
                         </span>
                       </div>
                       <dl>
@@ -543,11 +566,21 @@ export default function AdminReportsPage() {
                           <dd>{row.totalMinutes} min</dd>
                         </div>
                         <div>
+                          <dt>Minutos cobrados</dt>
+                          <dd>
+                            {row.status === "completed"
+                              ? (row.minutesCharged ?? "—")
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div>
                           <dt>Pago</dt>
                           <dd>
-                            {row.paymentMethod
-                              ? paymentLabels[row.paymentMethod]
-                              : "—"}
+                            {isNoPaymentRequired(row)
+                              ? "No requerido"
+                              : row.paymentMethod
+                                ? paymentLabels[row.paymentMethod]
+                                : "—"}
                           </dd>
                         </div>
                         <div>
@@ -557,7 +590,11 @@ export default function AdminReportsPage() {
                       </dl>
                       <div className="movement-card-total">
                         <span>
-                          {row.status === "evaded" ? "Deuda" : "Total cobrado"}
+                          {row.status === "evaded"
+                            ? "Deuda"
+                            : isNoPaymentRequired(row)
+                              ? "Sin cobro"
+                              : "Total cobrado"}
                         </span>
                         <strong>
                           {money.format(

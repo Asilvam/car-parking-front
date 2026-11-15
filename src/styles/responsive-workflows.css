@@ -484,3 +484,27 @@
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
+.quote-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.quote-status.is-expired {
+  color: var(--danger);
+}
+.free-exit-note {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #edf4f0;
+  color: var(--forest);
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (min-width: 981px) { .admin-shell .admin-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

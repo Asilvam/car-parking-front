@@ -1,3 +1,4 @@
+import { isNoPaymentRequired } from "../lib/parking-payment";
 import SelectField from "../components/ui/SelectField";
 import ParkingModal from "../components/parking/ParkingModal";
 import { createOperationLock } from "../lib/operation-lock";
@@ -18,7 +19,7 @@ import ParkingHeader from "../components/parking/ParkingHeader";
 import ParkingVehicleItem from "../components/parking/ParkingVehicleItem";
 import { useParkingData } from "../hooks/useParkingData";
 import Toast, { useToast } from "../components/Toast";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import {
   evasionReasonCodes,
   evasionReasonLabels,
@@ -40,6 +41,7 @@ import {
   DialogMode,
   EvasionReasonCode,
   ParkingRecord,
+  ParkingQuote,
   PaymentMethod,
 } from "../lib/types";
 
@@ -113,7 +115,14 @@ export default function OperatorPage({
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [receiptDiscountApplied, setReceiptDiscountApplied] = useState(false);
-  const [chargeQuoteAt, setChargeQuoteAt] = useState<number | null>(null);
+  const [quote, setQuote] = useState<ParkingQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteRemaining, setQuoteRemaining] = useState(0);
+  const quoteDeadline = useRef(0);
+  const quoteRequest = useRef<AbortController | null>(null);
+  const quoteSequence = useRef(0);
+  const quoteExpired = quote !== null && quoteRemaining <= 0;
+  const quoteReady = quote !== null && !quoteExpired && !quoteLoading;
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [applyPurchaseDiscount, setApplyPurchaseDiscount] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>("charge");
@@ -141,6 +150,60 @@ export default function OperatorPage({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(
+    () => () => {
+      quoteRequest.current?.abort();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!quote) return;
+    const tick = () =>
+      setQuoteRemaining(Math.max(0, quoteDeadline.current - performance.now()));
+    tick();
+    const timer = window.setInterval(tick, 500);
+    return () => window.clearInterval(timer);
+  }, [quote]);
+
+  const requestQuote = async (record: ParkingRecord) => {
+    quoteRequest.current?.abort();
+    const controller = new AbortController();
+    quoteRequest.current = controller;
+    const sequence = ++quoteSequence.current;
+    const started = performance.now();
+    setQuote(null);
+    setQuoteRemaining(0);
+    setQuoteLoading(true);
+    setOperationError(null);
+    try {
+      const result = await api<ParkingQuote>("/parking/quote", {
+        method: "POST",
+        body: JSON.stringify({ vehicleNumber: record.vehicleNumber }),
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(15_000),
+        ]),
+      });
+      if (controller.signal.aborted || sequence !== quoteSequence.current)
+        return;
+      const remaining = Math.max(
+        0,
+        Date.parse(result.expiresAt) -
+          Date.parse(result.serverTime) -
+          (performance.now() - started),
+      );
+      quoteDeadline.current = performance.now() + remaining;
+      setQuote(result);
+      setQuoteRemaining(remaining);
+    } catch (error) {
+      if (!controller.signal.aborted && sequence === quoteSequence.current)
+        setOperationError((error as Error).message);
+    } finally {
+      if (sequence === quoteSequence.current && !controller.signal.aborted)
+        setQuoteLoading(false);
+    }
+  };
 
   const filteredActive = useMemo(() => {
     const query = search.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -192,7 +255,14 @@ export default function OperatorPage({
   };
 
   const registerExit = async () => {
-    if (!selected || !canOperate || busy) return;
+    if (
+      !selected ||
+      !canOperate ||
+      busy ||
+      !quoteReady ||
+      performance.now() >= quoteDeadline.current
+    )
+      return;
     if (!operationLock.tryAcquire()) return;
     setOperationError(null);
     setBusy("exit");
@@ -202,9 +272,9 @@ export default function OperatorPage({
         method: "POST",
         body: JSON.stringify({
           vehicleNumber: selected.vehicleNumber,
-          paymentMethod,
+          paymentMethod: estimatedTotal > 0 ? paymentMethod : undefined,
           applyPurchaseDiscount,
-          quotedExitTime: new Date(chargeQuoteAt ?? Date.now()).toISOString(),
+          quoteToken: quote!.quoteToken,
         }),
       });
       setSelected(null);
@@ -212,6 +282,10 @@ export default function OperatorPage({
       setReceiptDiscountApplied(applyPurchaseDiscount);
       await loadData();
     } catch (error) {
+      if (error instanceof ApiError && (error.code === "QUOTE_EXPIRED" || error.code === "QUOTE_INVALID")) {
+        quoteDeadline.current = 0;
+        setQuoteRemaining(0);
+      }
       setOperationError((error as Error).message);
     } finally {
       operationLock.release();
@@ -255,14 +329,17 @@ export default function OperatorPage({
     setDialogMode("charge");
     setReceipt(null);
     setReceiptDiscountApplied(false);
-    setChargeQuoteAt(Date.now());
     setSelected(record);
+    void requestQuote(record);
   };
 
   const openEvasion = (record: ParkingRecord) => {
     setOperationError(null);
     setDialogMode("evasion");
-    setChargeQuoteAt(null);
+    quoteRequest.current?.abort();
+    quoteSequence.current += 1;
+    setQuote(null);
+    setQuoteLoading(false);
     setEvasionReasonCode("left-without-payment");
     setEvasionObservation("");
     setReceipt(null);
@@ -276,28 +353,36 @@ export default function OperatorPage({
     setSelected(null);
     setReceipt(null);
     setReceiptDiscountApplied(false);
-    setChargeQuoteAt(null);
+    quoteRequest.current?.abort();
+    quoteSequence.current += 1;
+    setQuote(null);
+    setQuoteLoading(false);
     setDialogMode("charge");
     setApplyPurchaseDiscount(false);
     setEvasionReasonCode("left-without-payment");
     setEvasionObservation("");
   };
 
-  const quoteClock = chargeQuoteAt ?? now;
-  const estimatedMinutes = selected
-    ? elapsedMinutes(selected.entryTime, quoteClock)
-    : 0;
-  const baseEstimatedTotal = selected
-    ? estimatedMinutes * (selected.ratePerMinute || summary.ratePerMinute)
-    : 0;
+  const estimatedMinutes =
+    dialogMode === "charge"
+      ? (quote?.totalMinutes ?? 0)
+      : selected
+        ? elapsedMinutes(selected.entryTime, now)
+        : 0;
+  const estimatedRate =
+    dialogMode === "charge"
+      ? (quote?.ratePerMinute ?? 0)
+      : selected?.ratePerMinute || summary.ratePerMinute;
+  const baseEstimatedTotal = selected ? estimatedMinutes * estimatedRate : 0;
   const purchaseDiscountMinutes = Math.max(
     0,
-    parkingConfig?.purchaseDiscountMinutes ?? 15,
+    quote?.purchaseDiscountMinutes ??
+      parkingConfig?.purchaseDiscountMinutes ??
+      15,
   );
   const discountMinutes = applyPurchaseDiscount ? purchaseDiscountMinutes : 0;
   const estimatedTotal = selected
-    ? Math.max(estimatedMinutes - discountMinutes, 0) *
-      (selected.ratePerMinute || summary.ratePerMinute)
+    ? Math.max(estimatedMinutes - discountMinutes, 0) * estimatedRate
     : 0;
   const openMinutes = parseTimeToMinutes(parkingConfig?.openTime);
   const closeMinutes = parseTimeToMinutes(parkingConfig?.closeTime);
@@ -343,8 +428,8 @@ export default function OperatorPage({
               {hasData ? money.format(summary.revenue) : "—"}
             </strong>
             <small>
-              {hasData ? summary.completedVehicles : "—"} cobros completados
-              desde 08:00
+              {hasData ? summary.paidVehicles : "—"} cobros positivos desde
+              08:00
             </small>
           </article>
         )}
@@ -357,7 +442,10 @@ export default function OperatorPage({
           <article className="metric">
             <span>Minutos cobrados</span>
             <strong>{hasData ? summary.billedMinutes : "—"}</strong>
-            <small>acumulado desde 08:00</small>
+            <small>
+              {hasData ? summary.completedVehicles : "—"} salidas ·{" "}
+              {hasData ? summary.freeVehicles : "—"} cubiertas por compras
+            </small>
           </article>
         )}
         {isAdminMode && (
@@ -666,9 +754,11 @@ export default function OperatorPage({
                     <td>
                       {record.status === "evaded"
                         ? "Evasion"
-                        : record.paymentMethod
-                          ? paymentLabels[record.paymentMethod]
-                          : "-"}
+                        : isNoPaymentRequired(record)
+                          ? "No requerido"
+                          : record.paymentMethod
+                            ? paymentLabels[record.paymentMethod]
+                            : "-"}
                     </td>
                     {isAdminMode && (
                       <td>
@@ -707,7 +797,11 @@ export default function OperatorPage({
                   <span
                     className={`movement-status movement-status--${record.status}`}
                   >
-                    {record.status === "evaded" ? "Evasión" : "Pagado"}
+                    {record.status === "evaded"
+                      ? "Evasión"
+                      : isNoPaymentRequired(record)
+                        ? "Cubierto por compras"
+                        : "Pagado"}
                   </span>
                 </div>
                 <dl>
@@ -732,9 +826,11 @@ export default function OperatorPage({
                     <dd>
                       {record.status === "evaded"
                         ? "Sin pago"
-                        : record.paymentMethod
-                          ? paymentLabels[record.paymentMethod]
-                          : "—"}
+                        : isNoPaymentRequired(record)
+                          ? "No requerido"
+                          : record.paymentMethod
+                            ? paymentLabels[record.paymentMethod]
+                            : "—"}
                     </dd>
                   </div>
                   {isAdminMode && (
@@ -767,7 +863,7 @@ export default function OperatorPage({
               <h3 id="charge-title" className="receipt-title">
                 {receipt.status === "evaded"
                   ? "Evasion registrada"
-                  : "Pago registrado"}
+                  : isNoPaymentRequired(receipt) ? "Salida cubierta por compras" : "Pago registrado"}
               </h3>
               <div className="receipt-plate">{receipt.vehicleNumber}</div>
               <div
@@ -779,7 +875,9 @@ export default function OperatorPage({
                   <span>
                     {receipt.status === "evaded"
                       ? "Deuda registrada"
-                      : "Total cobrado"}
+                      : isNoPaymentRequired(receipt)
+                        ? "Importe a pagar"
+                        : "Total cobrado"}
                   </span>
                   <strong>{money.format(movementTotal(receipt))}</strong>
                   <small>{durationLabel(receipt.totalMinutes ?? 0)}</small>
@@ -830,15 +928,15 @@ export default function OperatorPage({
                     </strong>
                   </div>
                   <div>
-                    <span>Tiempo</span>
+                    <span>
+                      {dialogMode === "charge" ? "Tiempo cotizado" : "Tiempo"}
+                    </span>
                     <strong>{durationLabel(estimatedMinutes)}</strong>
                   </div>
                   <div>
                     <span>Tarifa</span>
                     <strong>
-                      {money.format(
-                        selected.ratePerMinute || summary.ratePerMinute,
-                      )}
+                      {money.format(estimatedRate)}
                       /min
                     </strong>
                   </div>
@@ -851,7 +949,11 @@ export default function OperatorPage({
                       ? "Deuda estimada"
                       : "Total a cobrar"}
                   </span>
-                  <strong>{money.format(estimatedTotal)}</strong>
+                  <strong>
+                    {dialogMode === "charge" && !quote
+                      ? "—"
+                      : money.format(estimatedTotal)}
+                  </strong>
                 </div>
                 {dialogMode === "charge" ? (
                   <>
@@ -862,7 +964,7 @@ export default function OperatorPage({
                       <input
                         id="purchase-discount"
                         type="checkbox"
-                        disabled={busy !== null}
+                        disabled={busy !== null || !quoteReady}
                         checked={applyPurchaseDiscount}
                         onChange={(event) =>
                           setApplyPurchaseDiscount(event.target.checked)
@@ -870,31 +972,39 @@ export default function OperatorPage({
                       />
                       <span>Descuento por compras</span>
                     </label>
-                    <fieldset>
-                      <legend>Medio de pago</legend>
-                      <div className="payment-grid">
-                        {(Object.keys(paymentLabels) as PaymentMethod[]).map(
-                          (method) => (
-                            <label
-                              key={method}
-                              className={
-                                paymentMethod === method ? "is-selected" : ""
-                              }
-                            >
-                              <input
-                                type="radio"
-                                name="payment"
-                                value={method}
-                                disabled={busy !== null}
-                                checked={paymentMethod === method}
-                                onChange={() => setPaymentMethod(method)}
-                              />
-                              {paymentLabels[method]}
-                            </label>
-                          ),
-                        )}
-                      </div>
-                    </fieldset>
+                    {estimatedTotal > 0 && (
+                      <fieldset>
+                        <legend>Medio de pago</legend>
+                        <div className="payment-grid">
+                          {(Object.keys(paymentLabels) as PaymentMethod[]).map(
+                            (method) => (
+                              <label
+                                key={method}
+                                className={
+                                  paymentMethod === method ? "is-selected" : ""
+                                }
+                              >
+                                <input
+                                  type="radio"
+                                  name="payment"
+                                  value={method}
+                                  disabled={busy !== null}
+                                  checked={paymentMethod === method}
+                                  onChange={() => setPaymentMethod(method)}
+                                />
+                                {paymentLabels[method]}
+                              </label>
+                            ),
+                          )}
+                        </div>
+                      </fieldset>
+                    )}
+                    {quoteReady && estimatedTotal === 0 && (
+                      <p className="free-exit-note">
+                        El descuento por compras cubre la estadía. No se
+                        requiere pago; confirma para cerrar la salida.
+                      </p>
+                    )}
                   </>
                 ) : (
                   <>
@@ -941,7 +1051,7 @@ export default function OperatorPage({
                     ? "La deuda final se calcula al registrar la evasion."
                     : applyPurchaseDiscount
                       ? `Descuento de ${discountMinutes} min aplicado sobre ${money.format(baseEstimatedTotal)}.`
-                      : "El total final se calcula al confirmar la salida."}
+                      : "El importe cotizado se conserva durante cinco minutos."}
                 </p>
               </div>
               <footer className="dialog-footer">
@@ -950,13 +1060,41 @@ export default function OperatorPage({
                     {operationError}
                   </p>
                 )}
+                {dialogMode === "charge" && (
+                  <div
+                    className={`quote-status ${quoteExpired ? "is-expired" : ""}`}
+                    role="status"
+                  >
+                    {quoteLoading
+                      ? "Solicitando cotización…"
+                      : quoteExpired
+                        ? "Cotización vencida. Actualiza el importe antes de confirmar."
+                        : quote
+                          ? `Cotización válida por ${Math.floor(Math.ceil(quoteRemaining / 1000) / 60)}:${String(Math.ceil(quoteRemaining / 1000) % 60).padStart(2, "0")}`
+                          : "Se necesita una cotización para continuar."}
+                    {!quoteLoading && (!quote || quoteExpired) && (
+                      <button
+                        type="button"
+                        className="retry-button"
+                        disabled={!canOperate || busy !== null}
+                        onClick={() => void requestQuote(selected)}
+                      >
+                        Actualizar cotización
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="dialog-footer-total">
                   <span>
                     {dialogMode === "evasion"
                       ? "Deuda estimada"
                       : "Total a cobrar"}
                   </span>
-                  <strong>{money.format(estimatedTotal)}</strong>
+                  <strong>
+                    {dialogMode === "charge" && !quote
+                      ? "—"
+                      : money.format(estimatedTotal)}
+                  </strong>
                 </div>
                 {!canOperate && (
                   <p role="status">
@@ -969,7 +1107,11 @@ export default function OperatorPage({
                   onClick={
                     dialogMode === "evasion" ? registerEvasion : registerExit
                   }
-                  disabled={busy !== null || !canOperate}
+                  disabled={
+                    busy !== null ||
+                    !canOperate ||
+                    (dialogMode === "charge" && !quoteReady)
+                  }
                 >
                   {busy ? (
                     <LoaderCircle
@@ -986,7 +1128,9 @@ export default function OperatorPage({
                     ? "Procesando…"
                     : dialogMode === "evasion"
                       ? "Confirmar evasión"
-                      : "Confirmar cobro y salida"}
+                      : estimatedTotal === 0 && quoteReady
+                        ? "Cerrar salida sin cobro"
+                        : "Confirmar cobro y salida"}
                 </button>
               </footer>
             </>

@@ -16,12 +16,14 @@ export type ParkingRecord = {
   vehicleNumber: string;
   entryTime: string;
   exitTime?: string;
+  closedAt?: string;
+  paidAt?: string;
   totalMinutes?: number;
   totalCost?: number;
   ratePerMinute: number;
   status: "active" | "completed" | "evaded";
-  paymentStatus?: "pending" | "paid" | "evaded";
-  exitType?: "paid" | "evasion";
+  paymentStatus?: "pending" | "paid" | "not_required" | "evaded";
+  exitType?: "paid" | "purchase-discount" | "evasion";
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
   outstandingAmount?: number;
@@ -56,6 +58,9 @@ export type ParkingConfig = {
 export type Summary = {
   activeVehicles: number;
   completedVehicles: number;
+  paidVehicles: number;
+  freeVehicles: number;
+  stayMinutes: number;
   revenue: number;
   billedMinutes: number;
   evadedVehicles: number;
@@ -66,6 +71,9 @@ export type Summary = {
 export const emptySummary: Summary = {
   activeVehicles: 0,
   completedVehicles: 0,
+  paidVehicles: 0,
+  freeVehicles: 0,
+  stayMinutes: 0,
   revenue: 0,
   billedMinutes: 0,
   evadedVehicles: 0,
@@ -92,6 +100,10 @@ export type SummaryResponse = {
     movements: number;
     active: number;
     completed: number;
+    paid: number;
+    free: number;
+    billedMinutes: number;
+    stayMinutes: number;
     evaded: number;
     revenue: number;
     debt: number;
@@ -112,8 +124,22 @@ export type SummaryResponse = {
     amountPaid: number;
     outstandingAmount: number;
     paymentMethod?: PaymentMethod;
+    noPaymentRequired?: boolean;
+    paymentStatus?: string;
     purchaseDiscountApplied?: boolean;
     discountMinutesApplied?: number;
     minutesCharged?: number;
   }>;
+};
+
+export type ParkingQuote = {
+  quoteToken: string;
+  parkingId: string;
+  locationId: string;
+  quotedAt: string;
+  serverTime: string;
+  expiresAt: string;
+  totalMinutes: number;
+  ratePerMinute: number;
+  purchaseDiscountMinutes: number;
 };
