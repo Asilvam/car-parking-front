@@ -1,304 +1,238 @@
-.is-admin-mode .entry-panel .panel-heading {
-  min-height: 30px;
+.admin-shell {
+  width: min(1260px, 100%);
+  margin: 0 auto;
+  padding: 24px;
 }
 
-.is-admin-mode .entry-panel form {
-  margin-top: 6px;
+.admin-topbar {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
 }
 
-.is-admin-mode .entry-panel .primary-button {
-  margin-top: 8px;
+.admin-back-link {
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
-.is-admin-mode .entry-panel .plate-input::placeholder {
-  color: #b9beb7;
+.admin-back-link:hover {
+  background: var(--paper);
 }
 
-.is-admin-mode .active-panel {
-  overflow: hidden;
+.admin-login {
+  width: min(460px, 100%);
+  margin: 64px auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
 }
 
-.is-admin-mode .active-heading-row {
-  gap: 14px;
-  align-items: stretch;
-}
-
-.is-admin-mode .active-heading-row .exit-search-panel {
-  width: 100%;
-  max-width: 300px;
-  height: 64px;
-  display: grid;
-  grid-template-rows: 18px minmax(0, 1fr);
-  border: 2px solid var(--ink);
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.is-admin-mode .active-heading-counter {
-  height: 64px;
-  display: grid;
-  grid-template-rows: 18px minmax(0, 1fr);
-  border: 2px solid var(--ink);
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.is-admin-mode .active-heading-counter span,
-.is-admin-mode .active-heading-row .active-heading-label {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 18px;
-  min-height: 0;
-  padding: 0 8px;
+.admin-login h1,
+.admin-header h1 {
   margin: 0;
+}
+
+.admin-login p,
+.admin-subtle {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+}
+
+.admin-login form,
+.admin-filters {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-login label,
+.admin-filters label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-login input,
+.admin-filters input,
+.admin-filters select {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.admin-login button,
+.admin-actions button,
+.admin-logout {
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  border-radius: 10px;
   background: var(--ink);
   color: #fff;
-  text-align: center;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 18px;
+  font-weight: 700;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.admin-overline {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.admin-filters {
+  margin-top: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.admin-actions {
+  display: grid;
+  gap: 8px;
+  align-content: end;
+}
+
+.admin-actions .admin-export {
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.admin-kpis {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-kpis article {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.admin-kpis span {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.admin-kpis strong {
+  font-size: 20px;
+}
+
+.admin-table-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto;
+  background: var(--surface);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  border-top: 1px solid var(--line);
+  padding: 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.admin-table thead th {
+  border-top: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.is-admin-mode .active-heading-counter strong,
-.is-admin-mode .active-heading-row .exit-search-input {
-  height: 100%;
-  min-height: 0;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 0;
-  background: #fff;
+@media (max-width: 980px) {
+  .admin-filters,
+  .admin-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-shell {
+    padding: 14px;
+  }
+
+  .admin-topbar {
+    margin-bottom: 12px;
+  }
+
+  .admin-header {
+    flex-direction: column;
+  }
+
+  .admin-filters,
+  .admin-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Reports use the same controls and surfaces as the operational views. */
+.admin-login,
+.admin-table-wrap,
+.admin-kpis article {
+  border-radius: var(--radius-panel);
+}
+.admin-login input,
+.admin-filters input,
+.admin-filters select {
+  min-height: 44px;
+  background: var(--surface);
   color: var(--ink);
-  font-family: "Arial Narrow", Impact, ui-sans-serif, sans-serif;
-  font-size: 26px;
-  font-weight: 900;
-  line-height: normal;
-  letter-spacing: 0.04em;
-  text-align: center;
-  box-shadow: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
 }
-
-.is-admin-mode .active-heading-counter strong {
-  display: grid;
-  place-items: center;
+.admin-login button,
+.admin-actions button {
+  min-height: 44px;
+  border-radius: var(--radius-control);
+  background: var(--forest);
+  color: white;
 }
-
-.is-admin-mode .active-heading-row .exit-search-panel:focus-within {
-  border-color: var(--forest);
-  box-shadow: 0 0 0 4px rgba(23, 60, 45, 0.2);
+.admin-actions .admin-export {
+  background: var(--surface);
+  color: var(--forest);
+  border: 1px solid var(--line);
 }
-
-.is-admin-mode .vehicle-inline-head,
-.is-admin-mode .vehicle-inline-row {
-  grid-template-columns: 108px 68px 78px 88px minmax(164px, 1fr);
-  gap: 8px;
-}
-
-.is-admin-mode .vehicle-inline-head {
-  padding: 7px 10px;
-}
-
-.is-admin-mode .vehicle-inline-head span:nth-child(2) {
-  width: 100%;
-  justify-self: center;
-  text-align: center;
-}
-
-.is-admin-mode .vehicle-cell-entry {
-  width: 100%;
-  justify-self: stretch;
-  text-align: center;
-}
-
-.is-admin-mode .vehicle-cell-entry strong {
-  width: 100%;
-  text-align: center;
-}
-
-.is-admin-mode .vehicle-inline-head span:nth-child(3),
-.is-admin-mode .vehicle-inline-head span:nth-child(4) {
-  width: 100%;
-  justify-self: end;
-  text-align: right;
-}
-
-.is-admin-mode .vehicle-cell-time,
-.is-admin-mode .vehicle-cell-estimate {
-  width: 100%;
-  justify-self: stretch;
-  text-align: right;
-}
-
-.is-admin-mode .vehicle-cell-time strong,
-.is-admin-mode .vehicle-cell-estimate strong {
-  width: 100%;
-  text-align: right;
-}
-
-.is-admin-mode .vehicle-card {
-  padding: 10px;
-}
-
-.is-admin-mode .vehicle-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  min-width: 0;
-  width: 100%;
+.admin-back-link {
+  min-height: 36px;
+  display: inline-flex;
   align-items: center;
-  justify-self: start;
+  background: var(--surface);
 }
-
-.is-admin-mode .charge-button,
-.is-admin-mode .evasion-button {
-  min-width: 0;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 6px;
-  font-size: 11px;
-  line-height: 1.05;
-}
-
-@media (min-width: 981px) {
-  .is-admin-mode .workspace-grid {
-    grid-template-columns: 360px minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 680px) {
-  .is-admin-mode .active-heading-title {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .is-admin-mode .active-heading-top {
-    display: block;
-  }
-
-  .is-admin-mode .active-heading-row {
-    width: 90%;
-    margin-inline: auto;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 24px;
-  }
-
-  .is-admin-mode .active-heading-row .exit-search-panel {
-    max-width: none;
-  }
-
-  .is-admin-mode .vehicle-card {
-    gap: 8px;
-    padding: 10px 0;
-  }
-
-  .is-admin-mode .vehicle-inline-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "plate entry actions"
-      "plate time actions"
-      "plate estimate actions";
-    column-gap: 8px;
-    row-gap: 0;
-    align-items: stretch;
-    min-height: 54px;
-  }
-
-  .is-admin-mode .plate-badge {
-    grid-area: plate;
-    align-self: stretch;
-    justify-self: start;
-    width: auto;
-    min-height: 44px;
-    display: grid;
-    align-items: center;
-    padding: 8px 12px;
-    font-size: 20px;
-  }
-
-  .is-admin-mode .vehicle-cell-entry {
-    grid-area: entry;
-    align-self: center;
-    justify-self: stretch;
-  }
-
-  .is-admin-mode .vehicle-cell-time {
-    grid-area: time;
-    align-self: center;
-    justify-self: stretch;
-  }
-
-  .is-admin-mode .vehicle-cell-estimate {
-    grid-area: estimate;
-    align-self: center;
-    justify-self: stretch;
-  }
-
-  .is-admin-mode .vehicle-time,
-  .is-admin-mode .vehicle-estimate {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    align-items: center;
-    column-gap: 8px;
-    width: 100%;
-    text-align: left;
-    line-height: 1.05;
-  }
-
-  .is-admin-mode .vehicle-time span,
-  .is-admin-mode .vehicle-estimate span {
-    display: block;
-    color: var(--ink-soft);
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    justify-self: start;
-    text-align: left;
-  }
-
-  .is-admin-mode .vehicle-time strong,
-  .is-admin-mode .vehicle-estimate strong {
-    justify-self: end;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .is-admin-mode .vehicle-time strong {
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .is-admin-mode .vehicle-estimate strong {
-    color: var(--ink);
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .is-admin-mode .vehicle-actions {
-    grid-area: actions;
-    align-self: stretch;
-    justify-self: end;
-    width: 118px;
-    height: 100%;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .is-admin-mode .vehicle-actions .charge-button,
-  .is-admin-mode .vehicle-actions .evasion-button {
-    height: 100%;
-    min-height: 0;
-    padding: 4px 8px;
-    line-height: 1.05;
-  }
+.admin-actions button,
+.admin-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }

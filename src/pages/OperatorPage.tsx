@@ -1,4 +1,22 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SelectField from "../components/ui/SelectField";
+import ParkingModal from "../components/parking/ParkingModal";
+import { createOperationLock } from "../lib/operation-lock";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CarFront,
+  CircleCheck,
+  CreditCard,
+  History,
+  LoaderCircle,
+  LogIn,
+  LogOut,
+  Search,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import ParkingHeader from "../components/parking/ParkingHeader";
+import ParkingVehicleItem from "../components/parking/ParkingVehicleItem";
+import { useParkingData } from "../hooks/useParkingData";
 import Toast, { useToast } from "../components/Toast";
 import { api } from "../lib/api";
 import {
@@ -6,17 +24,23 @@ import {
   evasionReasonLabels,
   paymentLabels,
 } from "../lib/constants";
-import { chileDayMonth, clock, durationLabel, money, movementTotal, shortDate } from "../lib/format";
-import { elapsedMinutes, getChileLocalMinutes, parseTimeToMinutes } from "../lib/time";
+import {
+  clock,
+  durationLabel,
+  money,
+  movementTotal,
+  shortDate,
+} from "../lib/format";
+import {
+  elapsedMinutes,
+  getChileLocalMinutes,
+  parseTimeToMinutes,
+} from "../lib/time";
 import {
   DialogMode,
   EvasionReasonCode,
-  emptySummary,
-  ParkingConfig,
-  ParkingLocation,
   ParkingRecord,
   PaymentMethod,
-  Summary,
 } from "../lib/types";
 
 const CONSONANT = "[B-DF-HJ-NP-TV-Z]";
@@ -70,28 +94,38 @@ export default function OperatorPage({
   mode?: "operator" | "admin";
 }) {
   const isAdminMode = mode === "admin";
+  const {
+    active,
+    history,
+    summary,
+    location,
+    parkingConfig,
+    status,
+    lastUpdated,
+    refreshing,
+    loadData,
+  } = useParkingData(isAdminMode);
+  const hasData = lastUpdated !== null;
+  const canOperate = status === "ready" && hasData;
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<ParkingRecord[]>([]);
-  const [history, setHistory] = useState<ParkingRecord[]>([]);
-  const [summary, setSummary] = useState<Summary>(emptySummary);
-  const [location, setLocation] = useState<ParkingLocation | null>(null);
-  const [parkingConfig, setParkingConfig] = useState<ParkingConfig | null>(null);
   const [selected, setSelected] = useState<ParkingRecord | null>(null);
   const [receipt, setReceipt] = useState<ParkingRecord | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [receiptDiscountApplied, setReceiptDiscountApplied] = useState(false);
   const [chargeQuoteAt, setChargeQuoteAt] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("debit");
   const [applyPurchaseDiscount, setApplyPurchaseDiscount] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>("charge");
-  const [evasionReasonCode, setEvasionReasonCode] =
-    useState<EvasionReasonCode>("left-without-payment");
+  const [evasionReasonCode, setEvasionReasonCode] = useState<EvasionReasonCode>(
+    "left-without-payment",
+  );
   const [evasionObservation, setEvasionObservation] = useState("");
   const [busy, setBusy] = useState<"entry" | "exit" | "evasion" | null>(null);
-  const [connected, setConnected] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [mobileTab, setMobileTab] = useState<"entry" | "active">("entry");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const operationLock = useRef(createOperationLock()).current;
   const { toast, showToast, dismissToast } = useToast();
 
   useEffect(() => {
@@ -103,61 +137,10 @@ export default function OperatorPage({
     return () => window.clearTimeout(focusId);
   }, [mobileTab]);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [activeRecords, completedRecords, today, currentLocation, config, evadedRecords] =
-        await Promise.all([
-          api<ParkingRecord[]>("/parking?status=active"),
-          api<ParkingRecord[]>("/parking?status=completed"),
-          api<Summary>("/parking/summary/today"),
-          api<ParkingLocation>("/locations/current"),
-          api<ParkingConfig>("/parking/config"),
-          isAdminMode
-            ? api<ParkingRecord[]>("/parking?status=evaded")
-            : Promise.resolve([] as ParkingRecord[]),
-        ]);
-      const movements = [...completedRecords, ...evadedRecords].sort(
-        (left, right) =>
-          new Date(right.exitTime ?? right.entryTime).getTime() -
-          new Date(left.exitTime ?? left.entryTime).getTime(),
-      );
-      setActive(activeRecords);
-      setHistory(isAdminMode ? movements : movements.slice(0, 10));
-      setSummary(today);
-      setLocation(currentLocation);
-      setParkingConfig(config);
-      setConnected(true);
-    } catch {
-      setConnected(false);
-    }
-  }, [isAdminMode]);
-
   useEffect(() => {
-    void loadData();
-    const refreshApp = window.setInterval(() => {
-      setNow(Date.now());
-      void loadData();
-    }, 30_000);
-    const refreshOnFocus = () => void loadData();
-
-    window.addEventListener("focus", refreshOnFocus);
-    return () => {
-      window.clearInterval(refreshApp);
-      window.removeEventListener("focus", refreshOnFocus);
-    };
-  }, [loadData]);
-
-  useEffect(() => {
-    if (!selected && !receipt) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSelected(null);
-        setReceipt(null);
-      }
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [selected, receipt]);
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const filteredActive = useMemo(() => {
     const query = search.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -172,6 +155,7 @@ export default function OperatorPage({
 
   const registerEntry = async (event: FormEvent) => {
     event.preventDefault();
+    if (!canOperate || busy) return;
     if (!isEntryAllowedByTime) {
       showToast(
         `Fuera de horario de ingreso (${operatingHoursLabel}).`,
@@ -188,6 +172,7 @@ export default function OperatorPage({
       return;
     }
 
+    if (!operationLock.tryAcquire()) return;
     setBusy("entry");
     dismissToast();
     try {
@@ -201,12 +186,15 @@ export default function OperatorPage({
     } catch (error) {
       showToast((error as Error).message, "error");
     } finally {
+      operationLock.release();
       setBusy(null);
     }
   };
 
   const registerExit = async () => {
-    if (!selected) return;
+    if (!selected || !canOperate || busy) return;
+    if (!operationLock.tryAcquire()) return;
+    setOperationError(null);
     setBusy("exit");
     dismissToast();
     try {
@@ -224,14 +212,17 @@ export default function OperatorPage({
       setReceiptDiscountApplied(applyPurchaseDiscount);
       await loadData();
     } catch (error) {
-      showToast((error as Error).message, "error");
+      setOperationError((error as Error).message);
     } finally {
+      operationLock.release();
       setBusy(null);
     }
   };
 
   const registerEvasion = async () => {
-    if (!selected) return;
+    if (!selected || !canOperate || busy) return;
+    if (!operationLock.tryAcquire()) return;
+    setOperationError(null);
     setBusy("evasion");
     dismissToast();
     try {
@@ -250,13 +241,15 @@ export default function OperatorPage({
       setEvasionObservation("");
       await loadData();
     } catch (error) {
-      showToast((error as Error).message, "error");
+      setOperationError((error as Error).message);
     } finally {
+      operationLock.release();
       setBusy(null);
     }
   };
 
   const openCharge = (record: ParkingRecord) => {
+    setOperationError(null);
     setPaymentMethod("debit");
     setApplyPurchaseDiscount(false);
     setDialogMode("charge");
@@ -267,7 +260,9 @@ export default function OperatorPage({
   };
 
   const openEvasion = (record: ParkingRecord) => {
+    setOperationError(null);
     setDialogMode("evasion");
+    setChargeQuoteAt(null);
     setEvasionReasonCode("left-without-payment");
     setEvasionObservation("");
     setReceipt(null);
@@ -276,6 +271,8 @@ export default function OperatorPage({
   };
 
   const closeDialog = () => {
+    if (operationLock.pending) return;
+    setOperationError(null);
     setSelected(null);
     setReceipt(null);
     setReceiptDiscountApplied(false);
@@ -287,11 +284,16 @@ export default function OperatorPage({
   };
 
   const quoteClock = chargeQuoteAt ?? now;
-  const estimatedMinutes = selected ? elapsedMinutes(selected.entryTime, quoteClock) : 0;
+  const estimatedMinutes = selected
+    ? elapsedMinutes(selected.entryTime, quoteClock)
+    : 0;
   const baseEstimatedTotal = selected
     ? estimatedMinutes * (selected.ratePerMinute || summary.ratePerMinute)
     : 0;
-  const purchaseDiscountMinutes = Math.max(0, parkingConfig?.purchaseDiscountMinutes ?? 15);
+  const purchaseDiscountMinutes = Math.max(
+    0,
+    parkingConfig?.purchaseDiscountMinutes ?? 15,
+  );
   const discountMinutes = applyPurchaseDiscount ? purchaseDiscountMinutes : 0;
   const estimatedTotal = selected
     ? Math.max(estimatedMinutes - discountMinutes, 0) *
@@ -310,63 +312,21 @@ export default function OperatorPage({
       : "horario configurado";
 
   return (
-    <main className={`app-shell ${isAdminMode ? "is-admin-mode" : "is-operator-mode"}`}>
+    <main
+      className={`app-shell ${isAdminMode ? "is-admin-mode" : "is-operator-mode"}`}
+    >
       <Toast toast={toast} onClose={dismissToast} />
 
-      <header className="topbar">
-        <a
-          className="brand-lockup brand-admin-link"
-          href={isAdminMode ? "/" : "/admin"}
-          aria-label={isAdminMode ? "Volver a modo operador" : "Abrir modo administrador"}
-          title={isAdminMode ? "Modo operador" : "Modo administrador"}
-        >
-          <span className="brand-mark" aria-hidden="true">
-            M
-          </span>
-          <div>
-            <p className="eyebrow">
-              {isAdminMode
-                ? "Modo administrador"
-                : location?.name ?? "Control de estacionamiento"}
-            </p>
-            <h1>Minuto</h1>
-          </div>
-        </a>
-        <div className="topbar-actions">
-          {isAdminMode && (
-            <a className="admin-back-link" href="/admin/reports">
-              Informes
-            </a>
-          )}
-          <div className="topbar-status">
-            <span className={`status-dot ${connected ? "is-online" : ""}`} />
-            <span className="topbar-status-desktop">
-              {connected ? "Sistema conectado" : "Backend sin conexion"}
-            </span>
-            <span className="topbar-status-mobile">
-              {connected ? "En línea" : "Sin conexión"}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      <section className="dashboard-heading">
-        <article className="dash-chip">
-          <span>Fecha</span>
-          <strong>{chileDayMonth(now)}</strong>
-        </article>
-        <article className="dash-chip">
-          <span>Locacion</span>
-          <strong className="chip-location">
-            {location?.name ?? "Control de estacionamiento"}
-          </strong>
-        </article>
-        <article className="dash-chip rate-chip">
-          <span>Tarifa vigente</span>
-          <strong>{money.format(summary.ratePerMinute)}</strong>
-          <small>por minuto</small>
-        </article>
-      </section>
+      <ParkingHeader
+        isAdmin={isAdminMode}
+        location={location}
+        ratePerMinute={hasData ? summary.ratePerMinute : null}
+        now={now}
+        status={status}
+        lastUpdated={lastUpdated}
+        refreshing={refreshing}
+        onRetry={() => void loadData()}
+      />
 
       <section
         className={`summary-grid ${isAdminMode ? "summary-grid-admin" : ""}`}
@@ -375,51 +335,69 @@ export default function OperatorPage({
         {isAdminMode && (
           <article className="metric metric-highlight">
             <span>Recaudacion</span>
-            <strong>{money.format(summary.revenue)}</strong>
-            <small>{summary.completedVehicles} cobros completados desde 08:00</small>
+            <strong
+              className={
+                summary.revenue >= 1_000_000 ? "metric-value-long" : undefined
+              }
+            >
+              {hasData ? money.format(summary.revenue) : "—"}
+            </strong>
+            <small>
+              {hasData ? summary.completedVehicles : "—"} cobros completados
+              desde 08:00
+            </small>
           </article>
         )}
         <article className="metric">
           <span>Vehiculos dentro</span>
-          <strong>{summary.activeVehicles}</strong>
+          <strong>{hasData ? summary.activeVehicles : "—"}</strong>
           <small>ingresados desde 08:00</small>
         </article>
         {isAdminMode && (
           <article className="metric">
             <span>Minutos cobrados</span>
-            <strong>{summary.billedMinutes}</strong>
+            <strong>{hasData ? summary.billedMinutes : "—"}</strong>
             <small>acumulado desde 08:00</small>
           </article>
         )}
         {isAdminMode && (
           <article className="metric metric-evasion">
             <span>Evasiones</span>
-            <strong>{summary.evadedVehicles}</strong>
-            <small>deuda acumulada {money.format(summary.evadedAmount)}</small>
+            <strong>{hasData ? summary.evadedVehicles : "—"}</strong>
+            <small>
+              deuda acumulada{" "}
+              {hasData ? money.format(summary.evadedAmount) : "—"}
+            </small>
           </article>
         )}
       </section>
 
       <section className="workspace-grid">
-        <nav className="mobile-workspace-tabs" aria-label="Navegacion operativa">
+        <nav
+          className="mobile-workspace-tabs"
+          aria-label="Navegacion operativa"
+        >
           <button
             className={mobileTab === "entry" ? "is-active" : ""}
+            aria-pressed={mobileTab === "entry"}
             type="button"
             onClick={() => setMobileTab("entry")}
           >
-            Ingreso
+            <LogIn size={18} aria-hidden="true" /> Ingreso
           </button>
           <button
             className={mobileTab === "active" ? "is-active" : ""}
+            aria-pressed={mobileTab === "active"}
             type="button"
             onClick={() => setMobileTab("active")}
           >
-            Salidas ({active.length})
+            <LogOut size={18} aria-hidden="true" /> Salidas (
+            {hasData ? active.length : "—"})
           </button>
         </nav>
 
         <article
-          className={`entry-panel panel ${
+          className={`entry-panel panel ${hasData && !isEntryAllowedByTime ? "is-closed" : ""} ${
             mobileTab === "entry" ? "is-mobile-visible" : "is-mobile-hidden"
           }`}
         >
@@ -436,30 +414,54 @@ export default function OperatorPage({
               id="vehicle-number"
               className="plate-input"
               value={vehicleNumber}
-              onChange={(event) => setVehicleNumber(normalizeVehicleInput(event.target.value))}
+              onChange={(event) =>
+                setVehicleNumber(normalizeVehicleInput(event.target.value))
+              }
               placeholder="BCDF12"
               minLength={6}
               maxLength={6}
               autoComplete="off"
-              autoFocus
+              disabled={!canOperate || !isEntryAllowedByTime}
+              aria-describedby={
+                !isEntryAllowedByTime ? "entry-hours-notice" : undefined
+              }
             />
-            {!isEntryAllowedByTime && (
-              <p className="field-help field-help-warning">
-                Ingresos habilitados entre {operatingHoursLabel}. Fuera de ese horario solo se
-                permiten cobros y salidas.
+            {hasData && !isEntryAllowedByTime && (
+              <p
+                id="entry-hours-notice"
+                className="field-help field-help-warning"
+                role="status"
+              >
+                Ingresos habilitados entre {operatingHoursLabel}. Fuera de ese
+                horario solo se permiten cobros y salidas.
               </p>
             )}
             <button
               className={`primary-button ${!isEntryAllowedByTime ? "is-blocked" : ""}`.trim()}
               type="submit"
-              disabled={busy === "entry" || !isEntryAllowedByTime}
-              aria-disabled={busy === "entry" || !isEntryAllowedByTime}
+              disabled={busy !== null || !canOperate || !isEntryAllowedByTime}
+              aria-disabled={
+                busy !== null || !canOperate || !isEntryAllowedByTime
+              }
             >
-              {busy === "entry"
-                ? "Registrando..."
-                : !isEntryAllowedByTime
-                  ? "Ingresos cerrados"
-                  : "Registrar ingreso"}
+              {busy === "entry" ? (
+                <LoaderCircle
+                  size={20}
+                  className="icon-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <LogIn size={20} aria-hidden="true" />
+              )}
+              {!canOperate
+                ? status === "loading"
+                  ? "Cargando…"
+                  : "Sin conexión"
+                : busy === "entry"
+                  ? "Registrando..."
+                  : !isEntryAllowedByTime
+                    ? "Ingresos cerrados"
+                    : "Registrar ingreso"}
             </button>
           </form>
         </article>
@@ -476,26 +478,30 @@ export default function OperatorPage({
               </div>
               <div className="active-heading-row">
                 <div className="exit-search-panel">
-                  <label
-                    htmlFor="exit-search"
-                    className="active-heading-label"
-                  >
-                    Busca patente
+                  <label htmlFor="exit-search" className="active-heading-label">
+                    <Search size={16} aria-hidden="true" /> Buscar patente
                   </label>
                   <input
                     id="exit-search"
                     ref={searchInputRef}
                     className="plate-input exit-search-input"
                     value={search}
-                    onChange={(event) => setSearch(normalizeVehicleInput(event.target.value))}
+                    onChange={(event) =>
+                      setSearch(normalizeVehicleInput(event.target.value))
+                    }
                     onKeyDown={(event) => {
                       if (event.key !== "Enter") return;
-                      const query = search.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      const query = search
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, "");
                       const exact = filteredActive.find(
                         (record) => record.vehicleNumber === query,
                       );
                       const candidate =
-                        exact ?? (filteredActive.length === 1 ? filteredActive[0] : null);
+                        exact ??
+                        (filteredActive.length === 1
+                          ? filteredActive[0]
+                          : null);
                       if (!candidate) return;
                       event.preventDefault();
                       openCharge(candidate);
@@ -507,9 +513,12 @@ export default function OperatorPage({
                     spellCheck={false}
                   />
                 </div>
-                <div className="active-heading-counter" aria-label="Vehiculos en estacionamiento">
+                <div
+                  className="active-heading-counter"
+                  aria-label="Vehiculos en estacionamiento"
+                >
                   <span className="active-heading-label">Vehiculos</span>
-                  <strong>{active.length}</strong>
+                  <strong>{hasData ? active.length : "—"}</strong>
                 </div>
               </div>
             </div>
@@ -525,61 +534,71 @@ export default function OperatorPage({
                   <span>Estimado</span>
                   <span>Accion</span>
                 </div>
-                {filteredActive.length === 0 ? (
+                {!hasData ? (
+                  <div className="empty-state" role="status">
+                    {status === "loading" ? (
+                      <LoaderCircle
+                        className="icon-spin empty-state-icon"
+                        size={32}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <CarFront
+                        className="empty-state-icon"
+                        size={32}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <strong>
+                      {status === "loading"
+                        ? "Cargando vehículos…"
+                        : "Vehículos no disponibles"}
+                    </strong>
+                    <p>
+                      {status === "loading"
+                        ? "Estamos consultando el estacionamiento."
+                        : "Recupera la conexión para consultar las estadías."}
+                    </p>
+                  </div>
+                ) : filteredActive.length === 0 ? (
                   <div className="empty-state">
-                    <span aria-hidden="true">P</span>
-                    <strong>No hay vehiculos para mostrar</strong>
-                    <p>Los proximos ingresos apareceran aqui.</p>
+                    <CarFront
+                      className="empty-state-icon"
+                      size={32}
+                      aria-hidden="true"
+                    />
+                    <strong>
+                      {search
+                        ? "No encontramos esa patente"
+                        : "No hay vehículos dentro"}
+                    </strong>
+                    <p>
+                      {search
+                        ? "Prueba con otra patente o borra la búsqueda."
+                        : "Los próximos ingresos aparecerán aquí."}
+                    </p>
+                    {search && (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setSearch("")}
+                      >
+                        Limpiar búsqueda
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  filteredActive.map((record) => {
-                    const minutes = elapsedMinutes(record.entryTime, now);
-                    return (
-                      <div className="vehicle-card" key={record._id}>
-                        <div className="vehicle-inline-row">
-                          <div className="plate-badge">{record.vehicleNumber}</div>
-                          <div className="vehicle-time vehicle-cell-entry">
-                            <span>Entrada</span>
-                            <strong>{clock.format(new Date(record.entryTime))}</strong>
-                          </div>
-                          <div className="vehicle-time vehicle-time-elapsed vehicle-cell-time">
-                            <span>Tiempo</span>
-                            <strong>{durationLabel(minutes)}</strong>
-                          </div>
-                          <div className="vehicle-estimate vehicle-cell-estimate">
-                            <span>Estimado</span>
-                            <strong>
-                              {money.format(minutes * (record.ratePerMinute || summary.ratePerMinute))}
-                            </strong>
-                          </div>
-                          <div className="vehicle-actions">
-                            <button
-                              className="charge-button"
-                              type="button"
-                              onClick={() => openCharge(record)}
-                              aria-label={`Cobrar salida de ${record.vehicleNumber}`}
-                            >
-                              <span className="action-button-label">
-                                <span>Cobrar</span>
-                                <span>salida</span>
-                              </span>
-                            </button>
-                            <button
-                              className="evasion-button"
-                              type="button"
-                              onClick={() => openEvasion(record)}
-                              aria-label={`Marcar evasión de ${record.vehicleNumber}`}
-                            >
-                              <span className="action-button-label">
-                                <span>Marcar</span>
-                                <span>evasión</span>
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+                  filteredActive.map((record) => (
+                    <ParkingVehicleItem
+                      key={record._id}
+                      record={record}
+                      now={now}
+                      fallbackRate={summary.ratePerMinute}
+                      disabled={!canOperate || busy !== null}
+                      onCharge={openCharge}
+                      onEvasion={openEvasion}
+                    />
+                  ))
                 )}
               </div>
             </div>
@@ -590,11 +609,19 @@ export default function OperatorPage({
       <section className="history-panel panel">
         <div className="panel-heading history-heading">
           <div>
-            <p className="eyebrow">Actividad reciente</p>
-            <h3>{isAdminMode ? "Historial completo" : "Ultimos 10 movimientos"}</h3>
+            <p className="eyebrow with-icon">
+              <History size={16} aria-hidden="true" /> Actividad reciente
+            </p>
+            <h3>
+              {isAdminMode ? "Historial completo" : "Ultimos 10 movimientos"}
+            </h3>
           </div>
           <span className="history-count">
-            {isAdminMode ? `${history.length} registros` : `${history.length} de 10`}
+            {!hasData
+              ? "—"
+              : isAdminMode
+                ? `${history.length} registros`
+                : `${history.length} de 10`}
           </span>
         </div>
         <div className="history-table-wrap">
@@ -614,18 +641,26 @@ export default function OperatorPage({
               {history.length === 0 ? (
                 <tr>
                   <td colSpan={isAdminMode ? 7 : 6} className="table-empty">
-                    Aun no hay movimientos registrados.
+                    {!hasData
+                      ? status === "loading"
+                        ? "Cargando movimientos…"
+                        : "Historial no disponible sin conexión."
+                      : "Aún no hay movimientos registrados."}
                   </td>
                 </tr>
               ) : (
                 history.map((record) => (
                   <tr key={record._id}>
                     <td>
-                      <span className="table-plate">{record.vehicleNumber}</span>
+                      <span className="table-plate">
+                        {record.vehicleNumber}
+                      </span>
                     </td>
                     <td>{shortDate.format(new Date(record.entryTime))}</td>
                     <td>
-                      {record.exitTime ? shortDate.format(new Date(record.exitTime)) : "-"}
+                      {record.exitTime
+                        ? shortDate.format(new Date(record.exitTime))
+                        : "-"}
                     </td>
                     <td>{durationLabel(record.totalMinutes ?? 0)}</td>
                     <td>
@@ -646,60 +681,153 @@ export default function OperatorPage({
                           : "-"}
                       </td>
                     )}
-                    <td className="align-right table-total">{money.format(movementTotal(record))}</td>
+                    <td className="align-right table-total">
+                      {money.format(movementTotal(record))}
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        <div className="movement-cards" aria-label="Movimientos recientes">
+          {history.length === 0 ? (
+            <p className="movement-empty">
+              {!hasData
+                ? "Historial no disponible todavía."
+                : "Aún no hay movimientos registrados."}
+            </p>
+          ) : (
+            history.map((record) => (
+              <article className="movement-card" key={record._id}>
+                <div className="movement-card-heading">
+                  <strong className="table-plate">
+                    {record.vehicleNumber}
+                  </strong>
+                  <span
+                    className={`movement-status movement-status--${record.status}`}
+                  >
+                    {record.status === "evaded" ? "Evasión" : "Pagado"}
+                  </span>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Entrada</dt>
+                    <dd>{shortDate.format(new Date(record.entryTime))}</dd>
+                  </div>
+                  <div>
+                    <dt>Salida</dt>
+                    <dd>
+                      {record.exitTime
+                        ? shortDate.format(new Date(record.exitTime))
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Duración</dt>
+                    <dd>{durationLabel(record.totalMinutes ?? 0)}</dd>
+                  </div>
+                  <div>
+                    <dt>Pago</dt>
+                    <dd>
+                      {record.status === "evaded"
+                        ? "Sin pago"
+                        : record.paymentMethod
+                          ? paymentLabels[record.paymentMethod]
+                          : "—"}
+                    </dd>
+                  </div>
+                  {isAdminMode && (
+                    <div>
+                      <dt>Descuento</dt>
+                      <dd>
+                        {record.purchaseDiscountApplied
+                          ? `${record.discountMinutesApplied ?? purchaseDiscountMinutes} min`
+                          : "No"}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <div className="movement-card-total">
+                  <span>
+                    {record.status === "evaded" ? "Deuda" : "Total cobrado"}
+                  </span>
+                  <strong>{money.format(movementTotal(record))}</strong>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </section>
 
       {(selected || receipt) && (
-        <div className="dialog-backdrop" role="presentation">
-          <section className="charge-dialog" role="dialog" aria-modal="true" aria-labelledby="charge-title">
-            {receipt ? (
-              <>
-                <h3 id="charge-title" className="receipt-title">
-                  {receipt.status === "evaded" ? "Evasion registrada" : "Pago registrado"}
-                </h3>
-                <div className="receipt-plate">{receipt.vehicleNumber}</div>
-                <div
-                  className={`receipt-total ${
-                    receipt.status === "evaded" ? "is-evasion" : ""
-                  } ${receipt.status !== "evaded" ? "has-ticket" : ""}`}
-                >
-                  <div className="receipt-total-main">
-                    <span>{receipt.status === "evaded" ? "Deuda registrada" : "Total cobrado"}</span>
-                    <strong>{money.format(movementTotal(receipt))}</strong>
-                    <small>{durationLabel(receipt.totalMinutes ?? 0)}</small>
-                    {receipt.status !== "evaded" && receiptDiscountApplied && (
-                      <p className="receipt-discount-note">
-                        Descuento por compras aplicado.
-                      </p>
-                    )}
-                  </div>
-                  {receipt.status !== "evaded" && (
-                    <div className="receipt-total-ticket" aria-hidden="true">
-                      ✓
-                    </div>
+        <ParkingModal busy={busy !== null} onClose={closeDialog}>
+          {receipt ? (
+            <>
+              <h3 id="charge-title" className="receipt-title">
+                {receipt.status === "evaded"
+                  ? "Evasion registrada"
+                  : "Pago registrado"}
+              </h3>
+              <div className="receipt-plate">{receipt.vehicleNumber}</div>
+              <div
+                className={`receipt-total ${
+                  receipt.status === "evaded" ? "is-evasion" : ""
+                } ${receipt.status !== "evaded" ? "has-ticket" : ""}`}
+              >
+                <div className="receipt-total-main">
+                  <span>
+                    {receipt.status === "evaded"
+                      ? "Deuda registrada"
+                      : "Total cobrado"}
+                  </span>
+                  <strong>{money.format(movementTotal(receipt))}</strong>
+                  <small>{durationLabel(receipt.totalMinutes ?? 0)}</small>
+                  {receipt.status !== "evaded" && receiptDiscountApplied && (
+                    <p className="receipt-discount-note">
+                      Descuento por compras aplicado.
+                    </p>
                   )}
                 </div>
-                <button className="primary-button" type="button" onClick={closeDialog}>
-                  Listo
-                </button>
-              </>
-            ) : selected ? (
-              <>
-                <button className="dialog-close" type="button" onClick={closeDialog} aria-label="Cerrar operacion">
-                  ×
-                </button>
-                <p className="eyebrow">{dialogMode === "evasion" ? "Registrar evasion" : "Cobrar salida"}</p>
-                <h3 id="charge-title">{selected.vehicleNumber}</h3>
+                {receipt.status !== "evaded" && (
+                  <div className="receipt-total-ticket" aria-hidden="true">
+                    <CircleCheck size={32} aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={closeDialog}
+                disabled={busy !== null}
+              >
+                Listo
+              </button>
+            </>
+          ) : selected ? (
+            <>
+              <button
+                className="dialog-close"
+                type="button"
+                onClick={closeDialog}
+                disabled={busy !== null}
+                aria-label="Cerrar operacion"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+              <p className="eyebrow">
+                {dialogMode === "evasion"
+                  ? "Registrar evasion"
+                  : "Cobrar salida"}
+              </p>
+              <h3 id="charge-title">{selected.vehicleNumber}</h3>
+              <div className="dialog-scroll-content">
                 <div className="charge-breakdown">
                   <div>
                     <span>Entrada</span>
-                    <strong>{clock.format(new Date(selected.entryTime))}</strong>
+                    <strong>
+                      {clock.format(new Date(selected.entryTime))}
+                    </strong>
                   </div>
                   <div>
                     <span>Tiempo</span>
@@ -707,19 +835,34 @@ export default function OperatorPage({
                   </div>
                   <div>
                     <span>Tarifa</span>
-                    <strong>{money.format(selected.ratePerMinute || summary.ratePerMinute)}/min</strong>
+                    <strong>
+                      {money.format(
+                        selected.ratePerMinute || summary.ratePerMinute,
+                      )}
+                      /min
+                    </strong>
                   </div>
                 </div>
-                <div className={`charge-total ${dialogMode === "evasion" ? "is-evasion" : ""}`}>
-                  <span>{dialogMode === "evasion" ? "Deuda estimada" : "Total a cobrar"}</span>
+                <div
+                  className={`charge-total ${dialogMode === "evasion" ? "is-evasion" : ""}`}
+                >
+                  <span>
+                    {dialogMode === "evasion"
+                      ? "Deuda estimada"
+                      : "Total a cobrar"}
+                  </span>
                   <strong>{money.format(estimatedTotal)}</strong>
                 </div>
                 {dialogMode === "charge" ? (
                   <>
-                    <label className="discount-check" htmlFor="purchase-discount">
+                    <label
+                      className="discount-check"
+                      htmlFor="purchase-discount"
+                    >
                       <input
                         id="purchase-discount"
                         type="checkbox"
+                        disabled={busy !== null}
                         checked={applyPurchaseDiscount}
                         onChange={(event) =>
                           setApplyPurchaseDiscount(event.target.checked)
@@ -730,47 +873,49 @@ export default function OperatorPage({
                     <fieldset>
                       <legend>Medio de pago</legend>
                       <div className="payment-grid">
-                        {(Object.keys(paymentLabels) as PaymentMethod[]).map((method) => (
-                          <label key={method} className={paymentMethod === method ? "is-selected" : ""}>
-                            <input
-                              type="radio"
-                              name="payment"
-                              value={method}
-                              checked={paymentMethod === method}
-                              onChange={() => setPaymentMethod(method)}
-                            />
-                            {paymentLabels[method]}
-                          </label>
-                        ))}
+                        {(Object.keys(paymentLabels) as PaymentMethod[]).map(
+                          (method) => (
+                            <label
+                              key={method}
+                              className={
+                                paymentMethod === method ? "is-selected" : ""
+                              }
+                            >
+                              <input
+                                type="radio"
+                                name="payment"
+                                value={method}
+                                disabled={busy !== null}
+                                checked={paymentMethod === method}
+                                onChange={() => setPaymentMethod(method)}
+                              />
+                              {paymentLabels[method]}
+                            </label>
+                          ),
+                        )}
                       </div>
                     </fieldset>
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={registerExit}
-                      disabled={busy === "exit"}
-                    >
-                      {busy === "exit" ? "Procesando..." : "Confirmar cobro y salida"}
-                    </button>
                   </>
                 ) : (
                   <>
                     <p className="evasion-warning">
-                      Esta accion marcara el movimiento como evasion y registrara la deuda pendiente del ticket.
+                      Esta accion marcara el movimiento como evasion y
+                      registrara la deuda pendiente del ticket.
                     </p>
                     <div className="form-field">
-                      <label htmlFor="evasion-reason">Motivo</label>
-                      <select
+                      <SelectField
                         id="evasion-reason"
+                        label="Motivo"
                         value={evasionReasonCode}
-                        onChange={(event) => setEvasionReasonCode(event.target.value as EvasionReasonCode)}
-                      >
-                        {evasionReasonCodes.map((code) => (
-                          <option key={code} value={code}>
-                            {evasionReasonLabels[code]}
-                          </option>
-                        ))}
-                      </select>
+                        disabled={busy !== null}
+                        onChange={(value) =>
+                          setEvasionReasonCode(value as EvasionReasonCode)
+                        }
+                        options={evasionReasonCodes.map((value) => ({
+                          value,
+                          label: evasionReasonLabels[value],
+                        }))}
+                      />
                     </div>
                     <div className="form-field">
                       <label htmlFor="evasion-observation">
@@ -778,20 +923,17 @@ export default function OperatorPage({
                       </label>
                       <textarea
                         id="evasion-observation"
+                        disabled={busy !== null}
                         value={evasionObservation}
-                        onChange={(event) => setEvasionObservation(event.target.value.slice(0, 240))}
+                        onChange={(event) =>
+                          setEvasionObservation(
+                            event.target.value.slice(0, 240),
+                          )
+                        }
                         placeholder="Detalle breve para auditoria"
                       />
                       <small>{evasionObservation.length}/240</small>
                     </div>
-                    <button
-                      className="primary-button danger-button"
-                      type="button"
-                      onClick={registerEvasion}
-                      disabled={busy === "evasion"}
-                    >
-                      {busy === "evasion" ? "Registrando..." : "Confirmar evasion"}
-                    </button>
                   </>
                 )}
                 <p className="dialog-note">
@@ -801,10 +943,55 @@ export default function OperatorPage({
                       ? `Descuento de ${discountMinutes} min aplicado sobre ${money.format(baseEstimatedTotal)}.`
                       : "El total final se calcula al confirmar la salida."}
                 </p>
-              </>
-            ) : null}
-          </section>
-        </div>
+              </div>
+              <footer className="dialog-footer">
+                {operationError && (
+                  <p className="operation-error" role="alert">
+                    {operationError}
+                  </p>
+                )}
+                <div className="dialog-footer-total">
+                  <span>
+                    {dialogMode === "evasion"
+                      ? "Deuda estimada"
+                      : "Total a cobrar"}
+                  </span>
+                  <strong>{money.format(estimatedTotal)}</strong>
+                </div>
+                {!canOperate && (
+                  <p role="status">
+                    Sin conexión. Recupera la conexión para confirmar.
+                  </p>
+                )}
+                <button
+                  className={`primary-button ${dialogMode === "evasion" ? "danger-button" : ""}`}
+                  type="button"
+                  onClick={
+                    dialogMode === "evasion" ? registerEvasion : registerExit
+                  }
+                  disabled={busy !== null || !canOperate}
+                >
+                  {busy ? (
+                    <LoaderCircle
+                      size={20}
+                      className="icon-spin"
+                      aria-hidden="true"
+                    />
+                  ) : dialogMode === "evasion" ? (
+                    <TriangleAlert size={20} aria-hidden="true" />
+                  ) : (
+                    <CreditCard size={20} aria-hidden="true" />
+                  )}
+                  {busy
+                    ? "Procesando…"
+                    : dialogMode === "evasion"
+                      ? "Confirmar evasión"
+                      : "Confirmar cobro y salida"}
+                </button>
+              </footer>
+            </>
+          ) : null}
+        </ParkingModal>
       )}
     </main>
   );

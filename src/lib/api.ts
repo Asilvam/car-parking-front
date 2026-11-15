@@ -1,5 +1,14 @@
 import { API_URL, ADMIN_TOKEN_KEY } from "./constants";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -8,7 +17,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.message ?? "No se pudo completar la operación");
+    throw new ApiError(
+      body.message ?? "No se pudo completar la operación",
+      response.status,
+    );
   }
 
   return body as T;
@@ -30,7 +42,10 @@ export async function adminApi<T>(
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.message ?? "No se pudo completar la operación");
+    throw new ApiError(
+      body.message ?? "No se pudo completar la operación",
+      response.status,
+    );
   }
 
   return body as T;

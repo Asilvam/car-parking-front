@@ -1,3 +1,10 @@
+import {
+  CircleCheck,
+  CircleX,
+  TriangleAlert,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ToastVariant = "success" | "warning" | "error";
@@ -15,13 +22,10 @@ type ToastOptions = {
   duration?: number;
 };
 
-const toastMeta: Record<
-  ToastVariant,
-  { icon: string; label: string }
-> = {
-  success: { icon: "✓", label: "Listo" },
-  warning: { icon: "!", label: "Atención" },
-  error: { icon: "×", label: "No se pudo completar" },
+const toastMeta: Record<ToastVariant, { icon: LucideIcon; label: string }> = {
+  success: { icon: CircleCheck, label: "Listo" },
+  warning: { icon: TriangleAlert, label: "Atención" },
+  error: { icon: CircleX, label: "No se pudo completar" },
 };
 
 export function useToast() {
@@ -31,19 +35,14 @@ export function useToast() {
   const dismissToast = useCallback(() => setToast(null), []);
 
   const showToast = useCallback(
-    (
-      message: string,
-      variant: ToastVariant,
-      options: ToastOptions = {},
-    ) => {
+    (message: string, variant: ToastVariant, options: ToastOptions = {}) => {
       nextId.current += 1;
       setToast({
         id: nextId.current,
         message,
         variant,
         persistent: options.persistent ?? variant === "error",
-        duration:
-          options.duration ?? (variant === "success" ? 3000 : 6000),
+        duration: options.duration ?? (variant === "success" ? 3000 : 6000),
       });
     },
     [],
@@ -72,6 +71,7 @@ export default function Toast({
   if (!toast) return null;
 
   const meta = toastMeta[toast.variant];
+  const Icon = meta.icon;
   const isUrgent = toast.variant !== "success";
 
   return (
@@ -83,7 +83,7 @@ export default function Toast({
         aria-atomic="true"
       >
         <span className="app-toast__icon" aria-hidden="true">
-          {meta.icon}
+          <Icon size={24} aria-hidden="true" />
         </span>
         <div className="app-toast__content">
           <strong>{meta.label}</strong>
@@ -95,7 +95,7 @@ export default function Toast({
           onClick={onClose}
           aria-label="Cerrar mensaje"
         >
-          ×
+          <X size={18} aria-hidden="true" />
         </button>
       </section>
     </div>

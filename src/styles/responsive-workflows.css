@@ -1,0 +1,486 @@
+/* Native modal keeps focus inside and makes the background inert. */
+.parking-modal {
+  position: fixed;
+  margin: auto;
+  inset: 0;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  width: min(500px, calc(100% - 40px));
+  height: fit-content;
+  min-height: 0;
+  max-height: calc(var(--dialog-viewport-height, 100dvh) - 40px);
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 20px;
+}
+.parking-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+.parking-modal::backdrop {
+  background: rgba(12, 24, 18, 0.6);
+  backdrop-filter: blur(3px);
+}
+.parking-modal > h3,
+.parking-modal > .eyebrow {
+  flex-shrink: 0;
+}
+.parking-modal > .eyebrow {
+  margin-right: 44px;
+}
+.parking-modal .dialog-close {
+  width: 40px;
+  height: 40px;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+}
+.dialog-scroll-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 3px;
+}
+.dialog-footer {
+  flex-shrink: 0;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.dialog-footer-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.dialog-footer-total span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.dialog-footer-total strong {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+.dialog-footer > p {
+  font-size: 13px;
+  color: var(--danger);
+}
+.parking-modal .danger-button {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.parking-modal .charge-total {
+  display: none;
+}
+.parking-modal .dialog-note {
+  margin-bottom: 12px;
+}
+.parking-modal .evasion-warning {
+  line-height: 1.5;
+}
+.parking-modal select,
+.parking-modal textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+.parking-modal textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* One data source, table on desktop and readable cards on mobile. */
+.movement-cards {
+  display: none;
+}
+.movement-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  padding: 16px;
+  min-width: 0;
+}
+.movement-card-heading,
+.movement-card-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.movement-card-heading > strong {
+  font-size: 22px;
+}
+.movement-status {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #edf4f0;
+  color: var(--forest);
+}
+.movement-status--evaded {
+  background: #fff0ed;
+  color: var(--danger);
+}
+.movement-status--active {
+  background: #edf2fc;
+  color: #304b80;
+}
+.movement-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.movement-card dt {
+  color: var(--ink-soft);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.movement-card dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.movement-card-total {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 12px;
+}
+.movement-card-total > strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.movement-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.report-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 0;
+}
+.report-toolbar > p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  flex: 1;
+}
+.export-report-button,
+.filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--forest);
+  font-weight: 700;
+}
+.filters-toggle {
+  display: none;
+}
+.pending-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+.report-notice {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.report-notice--error {
+  border-color: #ead399;
+  color: #725000;
+  background: var(--color-warning-surface);
+}
+.report-range {
+  margin: 20px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.admin-header h2 {
+  margin: 4px 0;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.03em;
+}
+.admin-kpis article {
+  min-width: 0;
+}
+.admin-kpis strong {
+  display: block;
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-filters {
+  align-items: end;
+}
+.admin-shell .admin-login label {
+  margin-bottom: -6px;
+}
+
+@media (max-width: 680px) {
+  .parking-modal {
+    inset: auto 0 var(--keyboard-inset, 0px);
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    height: auto;
+    max-height: min(90dvh, calc(var(--dialog-viewport-height, 100dvh) - 12px));
+    padding: 24px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    border-bottom: 0;
+  }
+  .parking-modal > h3 {
+    font-size: 32px;
+  }
+  .parking-modal .charge-breakdown {
+    margin: 16px 0;
+  }
+  .parking-modal .charge-total {
+    margin: 12px 0;
+    padding: 12px;
+  }
+  .parking-modal .charge-total strong {
+    font-size: 32px;
+  }
+  .parking-modal .charge-total {
+    display: none;
+  }
+  .parking-modal .dialog-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .parking-modal .dialog-footer .primary-button {
+    min-height: 52px;
+  }
+  .parking-modal .payment-grid {
+    gap: 8px;
+  }
+  .parking-modal .payment-grid label {
+    min-height: 44px;
+  }
+  .app-shell.is-operator-mode .history-panel {
+    display: block;
+  }
+  .app-shell .history-table-wrap,
+  .admin-shell .admin-table-wrap {
+    display: none;
+  }
+  .movement-cards {
+    display: grid;
+    gap: 12px;
+  }
+  .history-panel .movement-cards {
+    margin-top: 16px;
+  }
+  .history-panel .movement-card {
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .report-movement-cards {
+    margin-top: 16px;
+  }
+  .admin-shell .admin-header {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .admin-shell .admin-header .admin-logout {
+    font-size: 0;
+    width: 44px;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .admin-shell .admin-header .admin-logout svg {
+    width: 20px;
+    height: 20px;
+  }
+  .admin-shell .admin-header .admin-logout {
+    gap: 0;
+  }
+  .admin-shell .admin-subtle {
+    font-size: 12px;
+  }
+  .report-toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+  }
+  .filters-toggle {
+    display: inline-flex;
+  }
+  .report-toolbar > p {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  .export-report-button {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 12px;
+  }
+  .filters-toggle {
+    font-size: 12px;
+  }
+  .admin-shell .admin-filters {
+    display: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-shell .admin-filters.is-expanded {
+    display: grid;
+  }
+  .admin-shell .admin-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .admin-kpis span {
+    font-size: 11px;
+  }
+  .admin-shell .admin-kpis strong {
+    font-size: 21px;
+  }
+}
+@media (min-width: 681px) and (max-width: 980px) {
+  .admin-shell .admin-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.admin-table td:nth-last-child(-n + 2),
+.admin-table th:nth-last-child(-n + 2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Render options in-page instead of the browser's separate native popup. */
+.select-field {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.select-field > label {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+}
+.select-trigger > svg {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+}
+.select-trigger[aria-expanded="true"] {
+  border-color: var(--forest);
+}
+.select-options {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(23, 37, 31, 0.16);
+}
+.select-options--above {
+  top: auto;
+  bottom: calc(100% - 18px);
+}
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--ink);
+  cursor: pointer;
+}
+.select-option.is-highlighted {
+  background: #edf4f0;
+}
+.select-option[aria-selected="true"] {
+  color: var(--forest);
+  font-weight: 700;
+}
+.select-option > svg {
+  flex-shrink: 0;
+}
+
+/* Strong boundaries for editable controls; panel separators stay subtle. */
+.plate-input,
+.select-trigger,
+.admin-filters input,
+.admin-login input,
+.parking-modal select,
+.parking-modal textarea,
+.app-shell .active-heading-row .exit-search-panel {
+  border-color: var(--color-control-border);
+}
+.admin-filters input,
+.admin-login input {
+  font-size: 16px;
+}
+
+.app-shell .metric strong,
+.movement-card-total > strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.app-shell .metric .metric-value-long,
+.admin-shell .admin-kpis .metric-value-long {
+  font-size: clamp(14px, 4.3vw, 22px);
+  white-space: nowrap;
+}
+
+.payment-grid label:has(input:focus-visible),
+.discount-check:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}

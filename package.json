@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "lucide-react": "1.73.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -18,5 +20,8 @@
     "@vitejs/plugin-react": "^5.1.1",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
+  },
+  "engines": {
+    "node": "26.x"
   }
 }
